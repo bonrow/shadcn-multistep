@@ -1,0 +1,19 @@
+{
+  "$schema": "https://ui.shadcn.com/schema/registry.json",
+  "name": "acme",
+  "homepage": "https://github.com/bonrow",
+  "items": [
+    {
+      "name": "multistep",
+      "type": "registry:block",
+      "title": "Hello World",
+      "description": "A simple hello world component.",
+      "files": [
+        {
+          "path": "./src/registry/new-york/multi-stepper/multi-stepper.tsx",
+          "type": "registry:component"
+        }
+      ]
+    }
+  ]
+}

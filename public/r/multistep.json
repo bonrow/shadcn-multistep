@@ -1,0 +1,14 @@
+{
+  "$schema": "https://ui.shadcn.com/schema/registry-item.json",
+  "name": "multistep",
+  "type": "registry:block",
+  "title": "Hello World",
+  "description": "A simple hello world component.",
+  "files": [
+    {
+      "path": "./src/registry/new-york/multi-stepper/multi-stepper.tsx",
+      "content": "import { Button } from \"@/components/ui/button\";\r\n\r\nexport function MultiStepper() {\r\n  return <Button>Multi Stepper</Button>;\r\n}\r\n",
+      "type": "registry:component"
+    }
+  ]
+}
