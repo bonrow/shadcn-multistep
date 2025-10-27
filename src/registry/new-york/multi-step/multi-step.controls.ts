@@ -39,19 +39,24 @@ export abstract class AbstractMultiStepControls<
       this.onFinish();
       return false;
     }
-    this.setStep(this.parts[currentIndex + 1].id);
+    const nextPart = this.parts[currentIndex + 1];
+    if (nextPart == null) return false;
+    this.setStep(nextPart.id);
     return true;
   }
 
   back(): boolean {
     const currentIndex = this.index();
-    if (currentIndex <= 0) return false;
-    this.setStep(this.parts[currentIndex - 1].id);
+    const lastPart = this.parts[currentIndex - 1];
+    if (lastPart == null) return false;
+    this.setStep(lastPart.id);
     return true;
   }
 
   part(): TParts[number] {
-    return this.parts[this.index()];
+    const part = this.parts[this.index()];
+    if (!part) throw new Error(); // shouldn't be possible
+    return part;
   }
 
   hasNext(): boolean {
