@@ -4,8 +4,8 @@ import type {
   MultiStep,
   MultiStepPartArray,
   MultiStepUncheckedResult,
-} from "./multi-stepper";
-import type { MultiStepControls } from "./multi-stepper.controls";
+} from "./multi-step";
+import type { MultiStepControls } from "./multi-step.controls";
 
 export interface MultiStepContext<
   TParts extends MultiStepPartArray = MultiStepPartArray,

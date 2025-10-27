@@ -11,8 +11,8 @@ import {
   MultiStepProvider,
   useMultiStep,
   useMultiStepPartUnsafe,
-} from "./multi-stepper.context";
-import { ObservableMultiStepControls } from "./multi-stepper.controls";
+} from "./multi-step.context";
+import { ObservableMultiStepControls } from "./multi-step.controls";
 
 //! You should move these type helpers to a separate file if you plan to reuse them
 // biome-ignore lint/suspicious/noExplicitAny: needed for type helper

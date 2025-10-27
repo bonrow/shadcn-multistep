@@ -7,8 +7,8 @@ import { cn } from "@/lib/utils";
 import type {
   MultiStepPart,
   MultiStepPartDefaultRenderProps,
-} from "./multi-stepper";
-import { useMultiStep, useMultiStepPart } from "./multi-stepper.context";
+} from "./multi-step";
+import { useMultiStep, useMultiStepPart } from "./multi-step.context";
 
 // biome-ignore lint/suspicious/noExplicitAny: not needed
 type FormOutputSchema = z.ZodType<any, FieldValues>;

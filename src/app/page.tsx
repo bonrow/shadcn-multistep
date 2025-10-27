@@ -15,8 +15,8 @@ import {
   MultiStepCurrentPart,
   MultiStepFooter,
   MultiStepTitle,
-} from "@/registry/new-york/multi-stepper/multi-stepper";
-import { defineMultiStepFormPart } from "@/registry/new-york/multi-stepper/multi-stepper.form";
+} from "@/registry/new-york/multi-step/multi-step";
+import { defineMultiStepFormPart } from "@/registry/new-york/multi-step/multi-step.form";
 
 const parts = Object.freeze([
   defineMultiStepFormPart({

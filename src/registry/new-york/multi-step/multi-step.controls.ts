@@ -1,4 +1,4 @@
-import type { MultiStep, MultiStepPartArray } from "./multi-stepper";
+import type { MultiStep, MultiStepPartArray } from "./multi-step";
 
 export interface MultiStepControls<TParts extends MultiStepPartArray> {
   readonly parts: TParts;

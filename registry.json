@@ -4,7 +4,7 @@
   "homepage": "https://github.com/bonrow",
   "items": [
     {
-      "name": "multi-stepper",
+      "name": "multi-step",
       "type": "registry:block",
       "title": "Hello World",
       "description": "A simple hello world component.",
@@ -12,21 +12,21 @@
       "dependencies": ["zod@4.0.0"],
       "files": [
         {
-          "path": "./src/registry/new-york/multi-stepper/multi-stepper.tsx",
+          "path": "./src/registry/new-york/multi-step/multi-step.tsx",
           "type": "registry:component"
         },
         {
-          "path": "./src/registry/new-york/multi-stepper/multi-stepper.context.tsx",
+          "path": "./src/registry/new-york/multi-step/multi-step.context.tsx",
           "type": "registry:component"
         },
         {
-          "path": "./src/registry/new-york/multi-stepper/multi-stepper.controls.ts",
+          "path": "./src/registry/new-york/multi-step/multi-step.controls.ts",
           "type": "registry:component"
         }
       ]
     },
     {
-      "name": "multi-stepper-form",
+      "name": "multi-step-form",
       "type": "registry:block",
       "title": "Hello World",
       "description": "A simple hello world component.",
@@ -34,19 +34,19 @@
       "dependencies": ["zod@4.0.0", "react-hook-form@^7.65.0"],
       "files": [
         {
-          "path": "./src/registry/new-york/multi-stepper/multi-stepper.tsx",
+          "path": "./src/registry/new-york/multi-step/multi-step.tsx",
           "type": "registry:component"
         },
         {
-          "path": "./src/registry/new-york/multi-stepper/multi-stepper.context.tsx",
+          "path": "./src/registry/new-york/multi-step/multi-step.context.tsx",
           "type": "registry:component"
         },
         {
-          "path": "./src/registry/new-york/multi-stepper/multi-stepper.controls.ts",
+          "path": "./src/registry/new-york/multi-step/multi-step.controls.ts",
           "type": "registry:component"
         },
         {
-          "path": "./src/registry/new-york/multi-stepper/multi-stepper.form.tsx",
+          "path": "./src/registry/new-york/multi-step/multi-step.form.tsx",
           "type": "registry:component"
         }
       ]
