@@ -1,20 +1,17 @@
 "use client";
 
-import { zodResolver } from "@hookform/resolvers/zod";
+import { SiGithub } from "@icons-pack/react-simple-icons";
 import {
   CheckIcon,
+  ExternalLinkIcon,
   HomeIcon,
-  MailIcon,
   SendIcon,
   User2Icon,
 } from "lucide-react";
-import { resolve } from "path";
-import { type DefaultValues, useForm, useFormContext } from "react-hook-form";
+import { useFormContext } from "react-hook-form";
 import z from "zod";
-import { partial } from "zod/mini";
 import { Button } from "@/components/ui/button";
 import {
-  Form,
   FormControl,
   FormField,
   FormItem,
@@ -24,7 +21,6 @@ import {
 import { Input } from "@/components/ui/input";
 import {
   defineMultiStepPart,
-  type InferMultiStepNextFn,
   type InferMultiStepOutput,
   MultiStep,
   MultiStepBackButton,
@@ -35,6 +31,8 @@ import {
 } from "@/registry/new-york/multi-step/multi-step";
 import { MultiStepFormPart } from "@/registry/new-york/multi-step/multi-step.form";
 import { MultiStepIndicator } from "@/registry/new-york/multi-step/multi-step.indicator";
+
+const GITHUB_REPO_URL = "https://github.com/bonrow/shadcn-multistep";
 
 type Parts = typeof parts;
 
@@ -106,12 +104,27 @@ const parts = Object.freeze([
 ]);
 
 export default function Home() {
-  // Use mutation query
-
   return (
-    <div>
-      Hello world
-      <div className="absolute left-1/2 top-1/2 -translate-1/2 w-sm bg-card p-6 rounded-lg">
+    <div className="w-full h-dvh flex items-center justify-center flex-col gap-12 p-5 md:p-2">
+      <h1 className="text-3xl/tight font-semibold tracking-tight">
+        Create beautiful multi-step forms and wizards <br />
+        in minutes.{" "}
+        <span className="font-normal text-muted-foreground">
+          Skip the unnecessary boilerplate.
+        </span>
+      </h1>
+      <Button
+        variant="secondary"
+        className="flex items-center gap-3 tracking-tight font-medium text-base cursor-pointer active:scale-98"
+        asChild
+      >
+        <a href={GITHUB_REPO_URL}>
+          <SiGithub className="size-4" />
+          Visit the Repository
+          <ExternalLinkIcon />
+        </a>
+      </Button>
+      <div className="max-w-sm w-full bg-linear-to-br from-card to-background p-6 rounded-lg relative before:absolute before:-inset-px before:bg-linear-to-br before:from-primary/60 before:to-accent before:to-40% before:-z-5 before:rounded-lg">
         <MultiStep
           parts={parts}
           onFinish={({ partial, complete }) => {

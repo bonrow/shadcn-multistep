@@ -519,6 +519,7 @@ export function MultiStepNextButton(
   return (
     <Button type="submit" disabled={multiStep.disabled} {...props}>
       {multiStep.controls.hasNext() ? "Next" : "Complete"}
+      <ArrowRightIcon />
     </Button>
   );
 }
