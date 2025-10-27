@@ -1,8 +1,18 @@
+# bonrow's shadcn-multistep
+
 Create stunning wizards and multi-step forms in a handful of minutes. 
 Completely type-safe. In **React** using **shadcn**, **zod** and **react-hook-form**.
 
-```
+## Installation
+```bash
+# pnpm
 pnpm dlx shadcn@latest add https://shadcn-multistep.vercel.app/r/multi-step.json
+
+# npm
+npx shadcn@latest add https://shadcn-multistep.vercel.app/r/multi-step.json
+
+# Bun
+bunx --bun shadcn@latest add https://shadcn-multistep.vercel.app/r/multi-step.json
 ```
 
 > [!IMPORTANT]
