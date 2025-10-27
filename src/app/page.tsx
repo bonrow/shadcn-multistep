@@ -1,7 +1,8 @@
 "use client";
 
-import { SiGithub } from "@icons-pack/react-simple-icons";
+import { SiGithub, SiX } from "@icons-pack/react-simple-icons";
 import { CheckIcon, ExternalLinkIcon } from "lucide-react";
+import type React from "react";
 import { useFormContext } from "react-hook-form";
 import z from "zod";
 import { Button } from "@/components/ui/button";
@@ -20,6 +21,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { cn } from "@/lib/utils";
 import {
   defineMultiStepPart,
   type InferMultiStepOutput,
@@ -34,6 +36,7 @@ import { MultiStepFormPart } from "@/registry/new-york/multi-step/multi-step.for
 import { MultiStepIndicator } from "@/registry/new-york/multi-step/multi-step.indicator";
 
 const GITHUB_REPO_URL = "https://github.com/bonrow/shadcn-multistep";
+const X_URL = "https://x.com/bonedfps";
 
 type Parts = typeof parts;
 
@@ -110,12 +113,61 @@ const parts = Object.freeze([
   }),
 ]);
 
-function DeliverWizard() {
+export default function Home() {
   return (
-    <div className="before:absolute before:-inset-px before:bg-linear-to-br before:from-primary/60 before:to-accent before:to-40% before:-z-5 before:rounded-lg relative max-w-sm w-full">
+    <div className="w-full h-dvh flex items-center justify-center flex-col gap-8 md:gap-8 p-5 md:p-2">
+      <div className="flex items-center gap-1 bg-card p-1 border rounded-lg scale-92">
+        <Button
+          variant="secondary"
+          className="flex items-center gap-3 font-medium cursor-pointer active:scale-98 relative"
+          asChild
+        >
+          <a href={GITHUB_REPO_URL}>
+            <SiGithub className="size-4" />
+            Star on GitHub
+          </a>
+        </Button>
+        <Button
+          variant="secondary"
+          size="icon"
+          className="flex items-center gap-3 font-medium cursor-pointer active:scale-98 relative font-mono"
+          asChild
+        >
+          <a href={X_URL}>
+            <SiX className="size-4" />
+          </a>
+        </Button>
+      </div>
+      <h1 className="text-3xl/tight font-semibold tracking-tight">
+        Create beautiful multi-step forms and wizards <br />
+        in minutes.{" "}
+        <span className="font-normal text-muted-foreground">
+          Skip the unnecessary boilerplate.
+        </span>
+      </h1>
+      <div className="w-full max-w-sm flex justify-center relative min-h-110">
+        <ExampleWizard className="mt-12 animate-in duration-600 fade-in slide-in-from-bottom-2" />
+        <div className="absolute size-12 bg-primary rounded-full blur-3xl" />
+      </div>
+    </div>
+  );
+}
+
+function ExampleWizard({
+  className,
+  ...restProps
+}: Omit<React.ComponentProps<"div">, "children">) {
+  return (
+    <div
+      className={cn(
+        "before:absolute before:-inset-px before:bg-linear-to-b before:from-primary/40 before:via-50% before:via-border before:to-transparent before:-z-5 before:rounded-lg relative w-full h-fit",
+        className,
+      )}
+      {...restProps}
+    >
       <MultiStep
         parts={parts}
-        className="max-w-sm w-full bg-linear-to-br from-card to-background p-6 rounded-lg relative"
+        className="max-w-sm w-full bg-linear-to-b from-card to-background p-6 rounded-lg relative"
         onFinish={({ partial, complete }) => {
           // Prints the stepper's partial result with everything gathered.
           console.log("Partial result:", partial());
@@ -132,32 +184,6 @@ function DeliverWizard() {
   );
 }
 
-export default function Home() {
-  return (
-    <div className="w-full h-dvh flex items-center justify-center flex-col gap-12 p-5 md:p-2">
-      <h1 className="text-3xl/tight font-semibold tracking-tight">
-        Create beautiful multi-step forms and wizards <br />
-        in minutes.{" "}
-        <span className="font-normal text-muted-foreground">
-          Skip the unnecessary boilerplate.
-        </span>
-      </h1>
-      <Button
-        variant="secondary"
-        className="flex items-center gap-3 font-medium cursor-pointer active:scale-98"
-        asChild
-      >
-        <a href={GITHUB_REPO_URL}>
-          <SiGithub className="size-4" />
-          Visit the Repository
-          <ExternalLinkIcon />
-        </a>
-      </Button>
-      <DeliverWizard />
-    </div>
-  );
-}
-
 function NameFormContent() {
   const form = useFormContext<InferMultiStepOutput<Parts, "name-step">>();
 
@@ -170,7 +196,7 @@ function NameFormContent() {
           <FormItem>
             <FormLabel>First Name</FormLabel>
             <FormControl>
-              <Input placeholder="First Name" {...field} />
+              <Input placeholder="First Name" {...field} autoComplete="off" />
             </FormControl>
             <FormMessage />
           </FormItem>
@@ -183,7 +209,7 @@ function NameFormContent() {
           <FormItem>
             <FormLabel>Last Name</FormLabel>
             <FormControl>
-              <Input placeholder="Last Name" {...field} />
+              <Input placeholder="Last Name" {...field} autoComplete="off" />
             </FormControl>
             <FormMessage />
           </FormItem>
@@ -205,7 +231,11 @@ function OrgFormContent() {
           <FormItem>
             <FormLabel>Name</FormLabel>
             <FormControl>
-              <Input placeholder="Organization Name" {...field} />
+              <Input
+                placeholder="Organization Name"
+                {...field}
+                autoComplete="off"
+              />
             </FormControl>
             <FormMessage />
           </FormItem>
