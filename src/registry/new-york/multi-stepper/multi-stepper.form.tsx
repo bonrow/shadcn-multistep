@@ -1,46 +1,57 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import type React from "react";
-import { type DefaultValues, useForm } from "react-hook-form";
+import { type DefaultValues, type FieldValues, useForm } from "react-hook-form";
 import type z from "zod";
 import { Form } from "@/components/ui/form";
 import { cn } from "@/lib/utils";
 import type {
   MultiStepPart,
   MultiStepPartDefaultRenderProps,
-  OutputSchema,
 } from "./multi-stepper";
-import { useMultiStepper, useMultiStepperPart } from "./multi-stepper.context";
+import { useMultiStep, useMultiStepPart } from "./multi-stepper.context";
 
-export type MultiStepPartFormRenderProps<TOutput extends OutputSchema> =
+// biome-ignore lint/suspicious/noExplicitAny: not needed
+type FormOutputSchema = z.ZodType<any, FieldValues>;
+
+export type MultiStepPartFormRenderProps<TOutput extends FormOutputSchema> =
   MultiStepPartDefaultRenderProps<TOutput> & {
     form: ReturnType<typeof useForm<z.infer<TOutput>>>;
   };
 
 /** Type helper to define a multi step part with proper generics. */
-export function defineMultiStepFormPart<TOutput extends OutputSchema>({
+export function defineMultiStepFormPart<TOutput extends FormOutputSchema>({
   render: RenderComposed,
   ...restPart
-}: Omit<MultiStepPart<TOutput>, "render"> & {
+}: Omit<
+  Extract<MultiStepPart<TOutput>, { hasOutput: true }>,
+  "render" | "hasOutput"
+> & {
   render: React.FC<MultiStepPartFormRenderProps<TOutput>>;
-}): MultiStepPart<TOutput> {
+}): Extract<MultiStepPart<TOutput>, { hasOutput: true }> {
   return {
     ...restPart,
+    hasOutput: true,
     render: ({ defaultValues, ...rest }) => {
+      if (!rest.part.hasOutput)
+        throw new Error(
+          "MultiStepFormPart requires an output schema when used with forms."
+        );
+
       // biome-ignore lint/suspicious/noExplicitAny: too complex
       const form = useForm<any>({
         resolver: zodResolver(rest.part.output),
         defaultValues: defaultValues as DefaultValues<typeof defaultValues>,
       });
       return (
-        <MultiStepperPartForm form={form}>
+        <MultiStepPartForm form={form}>
           <RenderComposed form={form} defaultValues={defaultValues} {...rest} />
-        </MultiStepperPartForm>
+        </MultiStepPartForm>
       );
     },
   };
 }
 
-export function MultiStepperPartForm({
+export function MultiStepPartForm({
   className,
   children,
   form,
@@ -48,8 +59,8 @@ export function MultiStepperPartForm({
 }: React.ComponentProps<"form"> & {
   form: ReturnType<typeof useForm>;
 }) {
-  const multiStep = useMultiStepper();
-  const thisPart = useMultiStepperPart();
+  const multiStep = useMultiStep();
+  const thisPart = useMultiStepPart();
 
   return (
     <Form {...form}>

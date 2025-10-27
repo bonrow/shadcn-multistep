@@ -3,11 +3,11 @@ import type {
   InferMultiStepOutput,
   MultiStep,
   MultiStepPartArray,
-  MultiStepperUncheckedResult,
+  MultiStepUncheckedResult,
 } from "./multi-stepper";
-import type { MultiStepperControls } from "./multi-stepper.controls";
+import type { MultiStepControls } from "./multi-stepper.controls";
 
-export interface MultiStepperContext<
+export interface MultiStepContext<
   TParts extends MultiStepPartArray = MultiStepPartArray,
   TStep extends MultiStep<TParts> = MultiStep<TParts>
 > {
@@ -15,37 +15,35 @@ export interface MultiStepperContext<
   readonly direction: number;
   readonly parts: TParts;
   readonly step: MultiStep<TParts>;
-  readonly controls: MultiStepperControls<TParts>;
-  readonly result: () => Partial<MultiStepperUncheckedResult<TParts>>;
+  readonly controls: MultiStepControls<TParts>;
+  readonly result: () => Partial<MultiStepUncheckedResult<TParts>>;
 
   onComplete(data: InferMultiStepOutput<TParts, TStep>): void;
 }
 
-const MultiStepperContext = React.createContext<MultiStepperContext | null>(
-  null
-);
+const MultiStepContext = React.createContext<MultiStepContext | null>(null);
 
-const MultiStepperPartContext = React.createContext<
+const MultiStepPartContext = React.createContext<
   MultiStepPartArray[number] | null
 >(null);
 
-export const MultiStepperProvider = MultiStepperContext.Provider;
+export const MultiStepProvider = MultiStepContext.Provider;
 
-export const MultiStepperPartProvider = MultiStepperPartContext.Provider;
+export const MultiStepPartProvider = MultiStepPartContext.Provider;
 
-export function useMultiStepper() {
-  const context = React.useContext(MultiStepperContext);
-  if (!context) throw new Error("Missing MultiStepperContext provider");
+export function useMultiStep() {
+  const context = React.useContext(MultiStepContext);
+  if (!context) throw new Error("Missing MultiStepContext provider");
   return context;
 }
 
-export function useMultiStepperPart<TParts extends MultiStepPartArray>() {
-  const context = React.useContext(MultiStepperPartContext) as
+export function useMultiStepPart<TParts extends MultiStepPartArray>() {
+  const context = React.useContext(MultiStepPartContext) as
     | TParts[number]
     | null;
-  if (!context) throw new Error("Missing MultiStepperPartContext provider");
+  if (!context) throw new Error("Missing MultiStepPartContext provider");
   return context;
 }
 
-export const useMultiStepperPartUnsafe = () =>
-  React.useContext(MultiStepperPartContext);
+export const useMultiStepPartUnsafe = () =>
+  React.useContext(MultiStepPartContext);

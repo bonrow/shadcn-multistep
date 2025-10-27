@@ -1,6 +1,6 @@
 import type { MultiStep, MultiStepPartArray } from "./multi-stepper";
 
-export interface MultiStepperControls<TParts extends MultiStepPartArray> {
+export interface MultiStepControls<TParts extends MultiStepPartArray> {
   readonly parts: TParts;
   readonly step: MultiStep<TParts>;
 
@@ -13,7 +13,7 @@ export interface MultiStepperControls<TParts extends MultiStepPartArray> {
   hasPrevious(): boolean;
 }
 
-export abstract class AbstractMultiStepperControls<
+export abstract class AbstractMultiStepControls<
   TParts extends MultiStepPartArray
 > {
   readonly parts: TParts;
@@ -63,9 +63,9 @@ export abstract class AbstractMultiStepperControls<
   }
 }
 
-export class ObservableMultiStepperControls<
+export class ObservableMultiStepControls<
   TParts extends MultiStepPartArray
-> extends AbstractMultiStepperControls<TParts> {
+> extends AbstractMultiStepControls<TParts> {
   private _onStepChange: (step: MultiStep<TParts>) => void;
   private _onFinish: () => void;
 
@@ -78,10 +78,10 @@ export class ObservableMultiStepperControls<
     parts: TParts;
     step: MultiStep<TParts>;
     onStepChange: (
-      this: ObservableMultiStepperControls<TParts>,
+      this: ObservableMultiStepControls<TParts>,
       step: MultiStep<TParts>
     ) => void;
-    onFinish: (this: ObservableMultiStepperControls<TParts>) => void;
+    onFinish: (this: ObservableMultiStepControls<TParts>) => void;
   }>) {
     super(parts, step);
     this._onStepChange = onStepChange.bind(this);

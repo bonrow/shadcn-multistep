@@ -10,10 +10,11 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import {
-  MultiStepper,
-  MultiStepperCurrentStep,
-  MultiStepperFooter,
-  MultiStepperTitle,
+  defineMultiStepPart,
+  MultiStep,
+  MultiStepCurrentPart,
+  MultiStepFooter,
+  MultiStepTitle,
 } from "@/registry/new-york/multi-stepper/multi-stepper";
 import { defineMultiStepFormPart } from "@/registry/new-york/multi-stepper/multi-stepper.form";
 
@@ -112,6 +113,14 @@ const parts = Object.freeze([
       />
     ),
   }),
+  defineMultiStepPart({
+    id: "success-panel",
+    title: "Success!",
+    hasOutput: false,
+    render: () => (
+      <div>You have successfully completed the multi-step form!</div>
+    ),
+  }),
 ] as const);
 
 export default function Home() {
@@ -119,7 +128,7 @@ export default function Home() {
     <div>
       Hello world
       <div className="absolute left-1/2 top-1/2 -translate-1/2 w-sm bg-card p-6 rounded-lg">
-        <MultiStepper
+        <MultiStep
           parts={parts}
           onFinish={({ partial, complete }) => {
             // Prints the stepper's partial result with everything gathered.
@@ -129,10 +138,10 @@ export default function Home() {
             console.log("Full result:", complete());
           }}
         >
-          <MultiStepperTitle />
-          <MultiStepperCurrentStep />
-          <MultiStepperFooter />
-        </MultiStepper>
+          <MultiStepTitle />
+          <MultiStepCurrentPart />
+          <MultiStepFooter />
+        </MultiStep>
       </div>
     </div>
   );

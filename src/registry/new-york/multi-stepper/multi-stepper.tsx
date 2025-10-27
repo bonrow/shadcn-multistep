@@ -6,13 +6,13 @@ import type { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import {
-  type MultiStepperContext,
-  MultiStepperPartProvider,
-  MultiStepperProvider,
-  useMultiStepper,
-  useMultiStepperPartUnsafe,
+  type MultiStepContext,
+  MultiStepPartProvider,
+  MultiStepProvider,
+  useMultiStep,
+  useMultiStepPartUnsafe,
 } from "./multi-stepper.context";
-import { ObservableMultiStepperControls } from "./multi-stepper.controls";
+import { ObservableMultiStepControls } from "./multi-stepper.controls";
 
 //! You should move these type helpers to a separate file if you plan to reuse them
 // biome-ignore lint/suspicious/noExplicitAny: needed for type helper
@@ -20,9 +20,6 @@ type UnionKeys<U> = U extends any ? keyof U : never;
 type MergeUnionToObject<U> = {
   [K in UnionKeys<U>]: K extends keyof U ? U[K] : never;
 };
-
-// biome-ignore lint/suspicious/noExplicitAny: not needed
-export type OutputSchema = z.ZodType<any, Record<string, any>>;
 
 /** Readonly array with readonly parts (useful for freezed constants). */
 // biome-ignore lint/suspicious/noExplicitAny: needed for deep reference (render->part)
@@ -39,45 +36,47 @@ export type InferMultiStepOutput<
 
 /** Data representation of a single **part** in a multi-stepper. */
 export type MultiStepPart<
-  TOutput extends OutputSchema = OutputSchema,
+  TOutput extends z.ZodType = z.ZodType,
   TRenderArgs = MultiStepPartDefaultRenderProps<TOutput>
 > = {
   id: string;
   title: React.ReactNode;
-  output: TOutput;
   icon?: React.ReactNode;
   defaultValues?: (
     data: Partial<z.infer<TOutput>>
   ) => Partial<z.infer<TOutput>>;
   render: React.FC<TRenderArgs>;
-};
+} & (
+  | { hasOutput: true; output: TOutput }
+  | { hasOutput: false; output?: never }
+);
 
-export type MultiStepPartDefaultRenderProps<TOutput extends OutputSchema> = {
-  stepper: MultiStepperContext;
+export type MultiStepPartDefaultRenderProps<TOutput extends z.ZodType> = {
+  stepper: MultiStepContext;
   defaultValues: Partial<z.infer<TOutput>>;
   part: MultiStepPart<TOutput>;
 };
 
 /** Extracts the merged result of all steps through forming an intersection. */
-export type MultiStepperMergedResult<TParts extends MultiStepPartArray> =
+export type MultiStepMergedResult<TParts extends MultiStepPartArray> =
   MergeUnionToObject<z.infer<TParts[number]["output"]>>;
 
-export type MultiStepperPartsResult<TParts extends MultiStepPartArray> = {
+export type MultiStepPartsResult<TParts extends MultiStepPartArray> = {
   [K in MultiStep<TParts>]: InferMultiStepOutput<TParts, K>;
 };
 
-export type MultiStepperCheckedResult<TParts extends MultiStepPartArray> = {
-  merged: MultiStepperMergedResult<TParts>;
-  parts: MultiStepperPartsResult<TParts>;
+export type MultiStepCheckedResult<TParts extends MultiStepPartArray> = {
+  merged: MultiStepMergedResult<TParts>;
+  parts: MultiStepPartsResult<TParts>;
 };
 
-export type MultiStepperUncheckedResult<TParts extends MultiStepPartArray> = {
-  merged: Partial<MultiStepperMergedResult<TParts>>;
-  parts: Partial<MultiStepperCheckedResult<TParts>["parts"]>;
+export type MultiStepUncheckedResult<TParts extends MultiStepPartArray> = {
+  merged: Partial<MultiStepMergedResult<TParts>>;
+  parts: Partial<MultiStepCheckedResult<TParts>["parts"]>;
 };
 
 /** Type helper to define a multi step part with proper generics. */
-export const defineMultiStepPart = <TOutput extends OutputSchema>(
+export const defineMultiStepPart = <TOutput extends z.ZodType>(
   part: MultiStepPart<TOutput>
 ): MultiStepPart<TOutput> => part;
 
@@ -100,7 +99,7 @@ const slideVariants = {
   }),
 };
 
-export function MultiStepper<TParts extends MultiStepPartArray>({
+export function MultiStep<TParts extends MultiStepPartArray>({
   parts,
   step,
   defaultStep = parts[0]?.id,
@@ -115,18 +114,16 @@ export function MultiStepper<TParts extends MultiStepPartArray>({
   onStepChange?: (step: MultiStep<TParts>) => void;
   onFinish?: (result: {
     /** Returns the stepper's partial result with everything gathered. */
-    partial(): MultiStepperUncheckedResult<TParts>;
+    partial(): MultiStepUncheckedResult<TParts>;
     /** Returns the stepper's complete result and throws an error if it's not complete. */
-    complete(): MultiStepperCheckedResult<TParts>;
+    complete(): MultiStepCheckedResult<TParts>;
   }) => void;
 }) {
   const directionRef = React.useRef(0);
   const [_step, _setStep] = React.useState(defaultStep);
-  const resultRef = React.useRef<Partial<MultiStepperUncheckedResult<TParts>>>(
-    {}
-  );
+  const resultRef = React.useRef<Partial<MultiStepUncheckedResult<TParts>>>({});
 
-  if (_step == null) throw new Error("MultiStepper requires at least one step");
+  if (_step == null) throw new Error("MultiStep requires at least one step");
 
   const onFinishRef = React.useRef(onFinish);
   onFinishRef.current = onFinish;
@@ -140,20 +137,20 @@ export function MultiStepper<TParts extends MultiStepPartArray>({
   }, [step]);
 
   const controls = React.useMemo(() => {
-    return new ObservableMultiStepperControls<TParts>({
+    return new ObservableMultiStepControls<TParts>({
       parts,
       step: _step,
       onFinish() {
         const res = resultRef.current;
         onFinishRef.current?.({
-          partial: () => res as MultiStepperUncheckedResult<TParts>,
+          partial: () => res as MultiStepUncheckedResult<TParts>,
           complete: () => {
             const resultParts = res.parts;
             if (!resultParts) throw new Error("No parts data available.");
             const notCompletePart = parts.find((p) => !(p.id in resultParts));
             if (notCompletePart)
               throw new Error(`Part "${notCompletePart.id}" is not complete.`);
-            return res as MultiStepperCheckedResult<TParts>;
+            return res as MultiStepCheckedResult<TParts>;
           },
         });
       },
@@ -169,7 +166,7 @@ export function MultiStepper<TParts extends MultiStepPartArray>({
   }, [parts, _step]);
 
   return (
-    <MultiStepperProvider
+    <MultiStepProvider
       value={{
         parts,
         step: _step,
@@ -178,10 +175,10 @@ export function MultiStepper<TParts extends MultiStepPartArray>({
         result: () => resultRef.current,
         onComplete(data) {
           const p = (resultRef.current.parts ??
-            {}) as MultiStepperUncheckedResult<TParts>["parts"];
+            {}) as MultiStepUncheckedResult<TParts>["parts"];
           p[_step] = data;
           resultRef.current.parts =
-            p as MultiStepperUncheckedResult<TParts>["parts"];
+            p as MultiStepUncheckedResult<TParts>["parts"];
           resultRef.current.merged = {
             ...resultRef.current.merged,
             ...data,
@@ -198,12 +195,14 @@ export function MultiStepper<TParts extends MultiStepPartArray>({
         )}
         {...restProps}
       />
-    </MultiStepperProvider>
+    </MultiStepProvider>
   );
 }
 
-export function MultiStepperCurrentStep() {
-  const multiStep = useMultiStepper();
+export function MultiStepCurrentPart(
+  props: Omit<React.ComponentProps<typeof motion.div>, "children">
+) {
+  const multiStep = useMultiStep();
 
   return (
     <div className="relative">
@@ -214,6 +213,7 @@ export function MultiStepperCurrentStep() {
               parts={multiStep.parts}
               step={part.id}
               key={part.id}
+              {...props}
             />
           ) : null
         )}
@@ -235,7 +235,7 @@ function MultiStepPart<
   parts: TParts;
   step: TStep;
 }) {
-  const multiStep = useMultiStepper();
+  const multiStep = useMultiStep();
 
   const part = parts.find((s) => s.id === step);
   if (!part) throw new Error(`Step with id "${step}" does not exist.`);
@@ -245,7 +245,7 @@ function MultiStepPart<
     : {};
 
   return (
-    <MultiStepperPartProvider value={part}>
+    <MultiStepPartProvider value={part}>
       <motion.div
         key={part.id}
         variants={slideVariants}
@@ -262,26 +262,26 @@ function MultiStepPart<
           part={part}
         />
       </motion.div>
-    </MultiStepperPartProvider>
+    </MultiStepPartProvider>
   );
 }
 
-export function MultiStepperTitle({
+export function MultiStepTitle({
   className,
   children,
   ...restProps
 }: React.ComponentProps<"h3">) {
-  const multiStepper = useMultiStepper();
-  const singleStep = useMultiStepperPartUnsafe();
+  const MultiStep = useMultiStep();
+  const singleStep = useMultiStepPartUnsafe();
 
   // If this title is used within a part, use that part here, otherwise
-  // use the current active step (used within MultiStepper directly).
+  // use the current active step (used within MultiStep directly).
   // This is useful to allow for titles to be used within steps to have them
   // within the animation (which may be accessible though!).
-  const current = singleStep?.id ?? multiStepper.controls.step;
-  const part = multiStepper.controls.parts.find((p) => p.id === current);
+  const current = singleStep?.id ?? MultiStep.controls.step;
+  const part = MultiStep.controls.parts.find((p) => p.id === current);
 
-  if (!part) throw new Error("MultiStepperTitle must be used within a step");
+  if (!part) throw new Error("MultiStepTitle must be used within a step");
 
   return (
     <h3
@@ -295,11 +295,11 @@ export function MultiStepperTitle({
   );
 }
 
-export function MultiStepperFooter({
+export function MultiStepFooter({
   className,
   ...restProps
 }: Omit<React.ComponentProps<"div">, "children">) {
-  const multiStep = useMultiStepper();
+  const multiStep = useMultiStep();
 
   return (
     <div
