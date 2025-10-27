@@ -48,8 +48,8 @@ const parts = Object.freeze([
       firstName: z.string().min(1),
     }),
     defaults: (data) => ({
-      lastName: data.lastName || String(),
-      firstName: data.firstName || String(),
+      lastName: data.lastName || "John",
+      firstName: data.firstName || "Doe",
     }),
     render: (props) => (
       <MultiStepFormPart {...props}>
@@ -97,6 +97,7 @@ const parts = Object.freeze([
           Success!
         </span>
         <MultiStepFooter>
+          <MultiStepBackButton />
           <MultiStepNextButton onClick={() => next()} />
         </MultiStepFooter>
       </div>
@@ -142,7 +143,7 @@ function NameFormContent() {
           <FormItem>
             <FormLabel>First Name</FormLabel>
             <FormControl>
-              <Input {...field} />
+              <Input placeholder="First Name" {...field} />
             </FormControl>
             <FormMessage />
           </FormItem>
@@ -153,9 +154,9 @@ function NameFormContent() {
         name="lastName"
         render={({ field }) => (
           <FormItem>
-            <FormLabel>First Name</FormLabel>
+            <FormLabel>Last Name</FormLabel>
             <FormControl>
-              <Input {...field} />
+              <Input placeholder="Last Name" {...field} />
             </FormControl>
             <FormMessage />
           </FormItem>
@@ -177,7 +178,7 @@ function AddressFormContent() {
           <FormItem>
             <FormLabel>Address</FormLabel>
             <FormControl>
-              <Input {...field} />
+              <Input placeholder="Address" {...field} />
             </FormControl>
             <FormMessage />
           </FormItem>
@@ -190,7 +191,7 @@ function AddressFormContent() {
           <FormItem>
             <FormLabel>City</FormLabel>
             <FormControl>
-              <Input {...field} />
+              <Input placeholder="City" {...field} />
             </FormControl>
             <FormMessage />
           </FormItem>

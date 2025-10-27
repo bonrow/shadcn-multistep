@@ -199,27 +199,36 @@ export const defineMultiStepParts = <TParts extends MultiStepPartArray>(
 export const defineMultiStepPart = <
   TOutput extends MultiStepOutput,
   TId extends string,
-  TComputeResult = void,
+  TComputeResult = unknown,
 >(
   part: MultiStepPart<TOutput, TId, TComputeResult>,
 ): Readonly<MultiStepPart<TOutput, TId, TComputeResult>> => part;
+
+const transition = Object.freeze({
+  type: "spring",
+  stiffness: 300,
+  damping: 26,
+} as const);
 
 /** [Framer Motion] used to animate the multi-step form */
 const slideVariants = {
   enter: (direction: number) => ({
     position: "absolute",
     x: direction > 0 ? "100%" : "-100%",
+    opacity: 1,
+    transition,
   }),
   center: {
     position: "relative",
     x: 0,
     opacity: 1,
-    transition: { duration: 0.3 },
+    transition,
   },
   exit: (direction: number) => ({
     position: "absolute",
     x: direction < 0 ? "100%" : "-100%",
-    transition: { duration: 0.3 },
+    opacity: 0,
+    transition,
   }),
 };
 
