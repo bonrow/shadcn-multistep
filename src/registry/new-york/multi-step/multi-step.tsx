@@ -1,5 +1,6 @@
 "use client";
-import { ArrowLeftIcon, ArrowRightIcon } from "lucide-react";
+/* eslint-disable @typescript-eslint/no-explicit-any */
+import { ArrowRightIcon } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import React, { type ComponentProps } from "react";
 import type { z } from "zod";

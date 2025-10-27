@@ -1,7 +1,7 @@
 "use client";
 
 import { SiGithub, SiX } from "@icons-pack/react-simple-icons";
-import { CheckIcon, ExternalLinkIcon } from "lucide-react";
+import { CheckIcon } from "lucide-react";
 import type React from "react";
 import { useFormContext } from "react-hook-form";
 import z from "zod";
