@@ -1,5 +1,15 @@
 "use client";
 
+import {
+  CheckCircleIcon,
+  CheckIcon,
+  FileInputIcon,
+  HomeIcon,
+  MailIcon,
+  SendIcon,
+  User2Icon,
+  UserIcon,
+} from "lucide-react";
 import z from "zod";
 import {
   FormControl,
@@ -17,10 +27,12 @@ import {
   MultiStepTitle,
 } from "@/registry/new-york/multi-step/multi-step";
 import { defineMultiStepFormPart } from "@/registry/new-york/multi-step/multi-step.form";
+import { MultiStepIndicator } from "@/registry/new-york/multi-step/multi-step.indicator";
 
 const parts = Object.freeze([
   defineMultiStepFormPart({
     id: "step-1",
+    indicator: <MailIcon />,
     title: "What's your email?",
     output: z.object({
       email: z.email("Invalid email address").min(2, "Email is required"),
@@ -48,6 +60,7 @@ const parts = Object.freeze([
   }),
   defineMultiStepFormPart({
     id: "step-2",
+    indicator: <HomeIcon />,
     title: "Where should we deliver to?",
     output: z.object({
       address: z.string().min(2),
@@ -90,6 +103,7 @@ const parts = Object.freeze([
   }),
   defineMultiStepFormPart({
     id: "step-3",
+    indicator: <User2Icon />,
     title: "Select a username",
     output: z.object({
       username: z.string().min(2),
@@ -115,6 +129,7 @@ const parts = Object.freeze([
   }),
   defineMultiStepPart({
     id: "success-panel",
+    indicator: <SendIcon />,
     title: "Success!",
     hasOutput: false,
     render: () => (
@@ -138,6 +153,7 @@ export default function Home() {
             console.log("Full result:", complete());
           }}
         >
+          <MultiStepIndicator />
           <MultiStepTitle />
           <MultiStepCurrentPart />
           <MultiStepFooter />

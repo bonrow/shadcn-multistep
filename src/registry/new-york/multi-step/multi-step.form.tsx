@@ -19,23 +19,25 @@ export type MultiStepPartFormRenderProps<TOutput extends FormOutputSchema> =
   };
 
 /** Type helper to define a multi step part with proper generics. */
-export function defineMultiStepFormPart<TOutput extends FormOutputSchema>({
+export function defineMultiStepFormPart<
+  const TId extends string,
+  const TOutput extends FormOutputSchema
+>({
   render: RenderComposed,
   ...restPart
 }: Omit<
-  Extract<MultiStepPart<TOutput>, { hasOutput: true }>,
-  "render" | "hasOutput"
-> & {
-  render: React.FC<MultiStepPartFormRenderProps<TOutput>>;
-}): Extract<MultiStepPart<TOutput>, { hasOutput: true }> {
+  Extract<
+    MultiStepPart<TOutput, TId, MultiStepPartFormRenderProps<TOutput>>,
+    { hasOutput: true }
+  >,
+  "hasOutput"
+>): Extract<MultiStepPart<TOutput, TId>, { hasOutput: true }> {
   return {
     ...restPart,
     hasOutput: true,
     render: ({ defaultValues, ...rest }) => {
       if (!rest.part.hasOutput)
-        throw new Error(
-          "MultiStepFormPart requires an output schema when used with forms."
-        );
+        throw new Error("MultiStepFormPart requires an output schema");
 
       // biome-ignore lint/suspicious/noExplicitAny: too complex
       const form = useForm<any>({
