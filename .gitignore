@@ -10,6 +10,9 @@
 !.yarn/releases
 !.yarn/versions
 
+# remove public/r/** to ensure only the latest clean files are used
+/public/r/
+
 # testing
 /coverage
 
