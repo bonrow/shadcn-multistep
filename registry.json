@@ -9,10 +9,14 @@
       "title": "Hello World",
       "description": "A simple hello world component.",
       "registryDependencies": ["button"],
-      "dependencies": ["zod@4.0.0"],
+      "dependencies": ["zod"],
       "files": [
         {
           "path": "./src/registry/new-york/multi-step/multi-step.tsx",
+          "type": "registry:component"
+        },
+        {
+          "path": "./src/registry/new-york/multi-step/multi-step.indicator.tsx",
           "type": "registry:component"
         },
         {
@@ -31,10 +35,14 @@
       "title": "Hello World",
       "description": "A simple hello world component.",
       "registryDependencies": ["button", "form"],
-      "dependencies": ["zod@4.0.0", "react-hook-form@^7.65.0"],
+      "dependencies": ["zod", "react-hook-form"],
       "files": [
         {
           "path": "./src/registry/new-york/multi-step/multi-step.tsx",
+          "type": "registry:component"
+        },
+        {
+          "path": "./src/registry/new-york/multi-step/multi-step.indicator.tsx",
           "type": "registry:component"
         },
         {
