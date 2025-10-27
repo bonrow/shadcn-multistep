@@ -16,7 +16,7 @@ const cvaIndicatorVariants = cva(
     defaultVariants: {
       state: "upcoming",
     },
-  }
+  },
 );
 
 export function MultiStepIndicator({
@@ -41,8 +41,8 @@ export function MultiStepIndicator({
                 index < multiStep.controls.index()
                   ? "completed"
                   : index === multiStep.controls.index()
-                  ? "current"
-                  : "upcoming",
+                    ? "current"
+                    : "upcoming",
             })}
           >
             {part.indicator ?? 1 + index}

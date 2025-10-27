@@ -91,17 +91,31 @@ export type MultiStepCheckedResult<TParts extends MultiStepPartArray> = {
  * @param TParts The array of multi-step parts.
  * @param TRequired The steps that are required to be completed.
  */
-export type MultiStepUncheckedResult<
+export type MultiStepUncheckedResult<TParts extends MultiStepPartArray> = {
+  merged: Partial<MultiStepMergedResult<TParts>>;
+  parts: Partial<MultiStepCheckedResult<TParts>["parts"]>;
+};
+
+export type MultiStepStateProbeContext<TParts extends MultiStepPartArray> = {
+  /** Returns the stepper's partial result with everything gathered. */
+  partial(): MultiStepUncheckedResult<TParts>;
+  /** Returns the stepper's complete result and throws an error if it's not complete. */
+  complete(): MultiStepCheckedResult<TParts>;
+};
+
+export type CompleteStepResult<
   TParts extends MultiStepPartArray,
-  TRequired extends MultiStep<TParts> = never,
-> = {
-  merged: Omit<
-    Partial<MultiStepMergedResult<TParts>>,
-    keyof InferMultiStepOutput<TParts, TRequired>
-  > &
-    InferMultiStepOutput<TParts, TRequired>;
-  parts: Omit<Partial<MultiStepCheckedResult<TParts>["parts"]>, TRequired> &
-    MultiStepCheckedResult<TParts>["parts"];
+  TStep extends MultiStep<TParts>,
+> = (Extract<TParts[number], { id: TStep }> extends { hasOutput: true }
+  ? { step: TStep; outputs: InferMultiStepOutput<TParts, TStep> }
+  : { step: TStep; outputs?: InferMultiStepOutput<TParts, TStep> }) & {
+  state: MultiStepStateProbeContext<TParts>;
+};
+
+export type CompleteStepMap<TParts extends MultiStepPartArray> = {
+  [K in MultiStep<TParts>]?: (
+    result: CompleteStepResult<TParts, K>,
+  ) => unknown | Promise<unknown>;
 };
 
 export const defineMultiStepParts = <TParts extends MultiStepPartArray>(
@@ -135,19 +149,6 @@ const slideVariants = {
   }),
 };
 
-export type CompleteStepResult<
-  TParts extends MultiStepPartArray,
-  TStep extends MultiStep<TParts>,
-> = Extract<TParts[number], { id: TStep }> extends { hasOutput: true }
-  ? { step: TStep; outputs: InferMultiStepOutput<TParts, TStep> }
-  : { step: TStep; outputs?: InferMultiStepOutput<TParts, TStep> };
-
-export type CompleteStepMap<TParts extends MultiStepPartArray> = {
-  [K in MultiStep<TParts>]?: (
-    result: CompleteStepResult<TParts, K>,
-  ) => unknown | Promise<unknown>;
-};
-
 export function MultiStep<TParts extends MultiStepPartArray>({
   parts,
   step,
@@ -156,6 +157,7 @@ export function MultiStep<TParts extends MultiStepPartArray>({
   completionHandlers,
   onFinish,
   className,
+  state,
   disabled,
   ...restProps
 }: React.ComponentProps<"section"> & {
@@ -164,12 +166,8 @@ export function MultiStep<TParts extends MultiStepPartArray>({
   step?: MultiStep<TParts>;
   onStepChange?: (step: MultiStep<TParts>) => void;
   completionHandlers?: CompleteStepMap<TParts>;
-  onFinish?: (result: {
-    /** Returns the stepper's partial result with everything gathered. */
-    partial(): MultiStepUncheckedResult<TParts>;
-    /** Returns the stepper's complete result and throws an error if it's not complete. */
-    complete(): MultiStepCheckedResult<TParts>;
-  }) => void;
+  onFinish?: (ctx: MultiStepStateProbeContext<TParts>) => unknown;
+  state?: MultiStepContext["state"];
   disabled?: boolean;
 }) {
   const directionRef = React.useRef(0);
@@ -193,6 +191,28 @@ export function MultiStep<TParts extends MultiStepPartArray>({
     _setStep(step);
   }, [step]);
 
+  React.useEffect(() => {
+    if (state === undefined) return;
+    _setState(state);
+  }, [state]);
+
+  const createStateProbe = React.useCallback(
+    (res: () => (typeof resultRef)["current"]) => ({
+      partial: () => res() as MultiStepUncheckedResult<TParts>,
+      complete: () => {
+        const resultParts = res().parts;
+        if (!resultParts) throw new Error("No parts data available.");
+        const notCompletePart = parts.find(
+          (p) => p.hasOutput && !(p.id in resultParts),
+        );
+        if (notCompletePart)
+          throw new Error(`Part "${notCompletePart.id}" is not complete.`);
+        return res as unknown as MultiStepCheckedResult<TParts>;
+      },
+    }),
+    [parts],
+  );
+
   const controls = React.useMemo(() => {
     // Ensure each part has a unique ID
     const seenIds = new Set<string>();
@@ -206,20 +226,11 @@ export function MultiStep<TParts extends MultiStepPartArray>({
       parts,
       step: _step,
       onFinish() {
-        const res = resultRef.current;
-        onFinishRef.current?.({
-          partial: () => res as MultiStepUncheckedResult<TParts>,
-          complete: () => {
-            const resultParts = res.parts;
-            if (!resultParts) throw new Error("No parts data available.");
-            const notCompletePart = parts.find(
-              (p) => p.hasOutput && !(p.id in resultParts),
-            );
-            if (notCompletePart)
-              throw new Error(`Part "${notCompletePart.id}" is not complete.`);
-            return res as unknown as MultiStepCheckedResult<TParts>;
-          },
-        });
+        // We don't want future holders of onFinish to have mutable state,
+        // which is why we store the reference as a memory addressable snapshot
+        // here, such that onFinish's argument is stable.
+        const stateRefSnapshot = resultRef.current;
+        onFinishRef.current?.(createStateProbe(() => stateRefSnapshot));
       },
       onStepChange(newStep) {
         const currentIndex = this.index();
@@ -230,7 +241,7 @@ export function MultiStep<TParts extends MultiStepPartArray>({
         onStepChangeRef.current?.(newStep);
       },
     });
-  }, [parts, _step]);
+  }, [parts, _step, createStateProbe]);
 
   return (
     <MultiStepProvider
@@ -260,7 +271,11 @@ export function MultiStep<TParts extends MultiStepPartArray>({
             _setState("submitting");
             const completionHandlers = completionHandlersRef.current;
             if (completionHandlers?.[_step]) {
-              await completionHandlers[_step]({ step: _step, outputs: data });
+              await completionHandlers[_step]({
+                step: _step,
+                outputs: data,
+                state: createStateProbe(() => resultRef.current),
+              });
             }
             controls.next(); // Auto-complete on last step submission
           } finally {

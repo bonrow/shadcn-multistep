@@ -3,6 +3,7 @@
 import { HomeIcon, MailIcon, SendIcon, User2Icon } from "lucide-react";
 import { resolve } from "path";
 import z from "zod";
+import { partial } from "zod/mini";
 import {
   FormControl,
   FormField,
@@ -139,14 +140,20 @@ export default function Home() {
           parts={parts}
           completionHandlers={{
             "step-1": async ({ step, outputs }) => {
-              console.log("Completed step:", step, outputs);
+              console.log("Register email:", step, outputs);
+              // Simulate some loading, like with using useMutation()
               await new Promise((resolve) => setTimeout(resolve, 1_000));
             },
-            "step-2": async ({ step, outputs }) => {
-              console.log("Completed step:", step, outputs);
-            },
-            "step-3": async ({ step, outputs }) => {
-              console.log("Completed step:", step, outputs);
+            "step-2": async ({ state }) => {
+              const partialState = state.partial();
+              const previousStepState = partialState.parts["step-1"];
+              if (!previousStepState)
+                throw new Error("Previous step was skipped");
+              const email = previousStepState.email;
+              // TODO do something with email
+              console.log("Do something with email", email);
+              // Simulate some loading, like with using useMutation()
+              await new Promise((resolve) => setTimeout(resolve, 1_000));
             },
           }}
           onFinish={({ partial, complete }) => {
