@@ -390,10 +390,9 @@ function MultiStepPart<
 >({
   parts,
   step,
-  children,
   className,
   ...restProps
-}: React.ComponentProps<typeof motion.div> & {
+}: Omit<React.ComponentProps<typeof motion.div>, "children"> & {
   parts: TParts;
   step: TStep;
 }) {

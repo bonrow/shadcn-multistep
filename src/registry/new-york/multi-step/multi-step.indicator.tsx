@@ -21,11 +21,9 @@ const cvaIndicatorVariants = cva(
 );
 
 export function MultiStepIndicator({
-  state,
   className,
   ...restProps
-}: Omit<React.ComponentProps<"div">, "children"> &
-  VariantProps<typeof cvaIndicatorVariants>) {
+}: Omit<React.ComponentProps<"div">, "children">) {
   const multiStep = useMultiStep();
 
   return (
