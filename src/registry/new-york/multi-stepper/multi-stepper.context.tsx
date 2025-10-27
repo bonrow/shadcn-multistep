@@ -3,6 +3,7 @@ import type {
   InferMultiStepFormData,
   MultiStep,
   MultiStepPartArray,
+  MultiStepperUncheckedResult,
 } from "./multi-stepper";
 import type { MultiStepperControls } from "./multi-stepper.controls";
 
@@ -15,6 +16,7 @@ export interface MultiStepperContext<
   readonly parts: TParts;
   readonly step: MultiStep<TParts>;
   readonly controls: MultiStepperControls<TParts>;
+  readonly result: () => Partial<MultiStepperUncheckedResult<TParts>>;
 
   onComplete(data: InferMultiStepFormData<TParts, TStep>): void;
 }
@@ -44,3 +46,6 @@ export function useMultiStepperPart<TParts extends MultiStepPartArray>() {
   if (!context) throw new Error("Missing MultiStepperPartContext provider");
   return context;
 }
+
+export const useMultiStepperPartUnsafe = () =>
+  React.useContext(MultiStepperPartContext);

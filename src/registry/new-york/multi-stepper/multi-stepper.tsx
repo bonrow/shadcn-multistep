@@ -14,6 +14,7 @@ import {
   MultiStepperProvider,
   useMultiStepper,
   useMultiStepperPart,
+  useMultiStepperPartUnsafe,
 } from "./multi-stepper.context";
 import { ObservableMultiStepperControls } from "./multi-stepper.controls";
 
@@ -45,7 +46,10 @@ export type MultiStepPart<TFormData extends FormSchema = FormSchema> = {
   id: string;
   title: React.ReactNode;
   formData: TFormData;
-  defaultValues?: Partial<z.infer<TFormData>>;
+  icon?: React.ReactNode;
+  defaultValues?: (
+    data: Partial<z.infer<TFormData>>
+  ) => Partial<z.infer<TFormData>>;
   render: React.FC<{
     form: ReturnType<typeof useForm<z.infer<TFormData>>>;
     part: MultiStepPart<TFormData>;
@@ -80,7 +84,6 @@ const slideVariants = {
   enter: (direction: number) => ({
     position: "absolute",
     x: direction > 0 ? "100%" : "-100%",
-    opacity: 0,
   }),
   center: {
     position: "relative",
@@ -91,7 +94,6 @@ const slideVariants = {
   exit: (direction: number) => ({
     position: "absolute",
     x: direction < 0 ? "100%" : "-100%",
-    opacity: 0,
     transition: { duration: 0.3 },
   }),
 };
@@ -104,7 +106,7 @@ export function MultiStepper<TParts extends MultiStepPartArray>({
   onFinish,
   className,
   ...restProps
-}: React.ComponentProps<"div"> & {
+}: React.ComponentProps<"section"> & {
   parts: TParts;
   defaultStep?: MultiStep<TParts>;
   step?: MultiStep<TParts>;
@@ -171,6 +173,7 @@ export function MultiStepper<TParts extends MultiStepPartArray>({
         step: _step,
         direction: directionRef.current,
         controls,
+        result: () => resultRef.current,
         onComplete(data) {
           const p = (resultRef.current.parts ??
             {}) as MultiStepperUncheckedResult<TParts>["parts"];
@@ -201,13 +204,19 @@ export function MultiStepperCurrentStep() {
   const multiStep = useMultiStepper();
 
   return (
-    <AnimatePresence custom={multiStep.direction}>
-      {multiStep.parts.map((part) =>
-        part.id === multiStep.controls.step ? (
-          <MultiStepPart parts={multiStep.parts} step={part.id} key={part.id} />
-        ) : null
-      )}
-    </AnimatePresence>
+    <div className="relative">
+      <AnimatePresence custom={multiStep.direction}>
+        {multiStep.parts.map((part) =>
+          part.id === multiStep.controls.step ? (
+            <MultiStepPart
+              parts={multiStep.parts}
+              step={part.id}
+              key={part.id}
+            />
+          ) : null
+        )}
+      </AnimatePresence>
+    </div>
   );
 }
 
@@ -218,6 +227,7 @@ function MultiStepPart<
   parts,
   step,
   children,
+  className,
   ...restProps
 }: React.ComponentProps<typeof motion.div> & {
   parts: TParts;
@@ -230,7 +240,9 @@ function MultiStepPart<
 
   const form = useForm({
     resolver: zodResolver(part.formData),
-    defaultValues: part.defaultValues,
+    defaultValues: part.defaultValues?.(
+      multiStep.result().parts?.[part.id] ?? {}
+    ),
   });
 
   return (
@@ -242,6 +254,7 @@ function MultiStepPart<
         animate="center"
         exit="exit"
         custom={multiStep.direction}
+        className={cn("relative w-full", className)}
         {...restProps}
       >
         <part.render form={form} part={part} />
@@ -273,6 +286,35 @@ export function MultiStepperPartForm({
         {children}
       </form>
     </Form>
+  );
+}
+
+export function MultiStepperTitle({
+  className,
+  children,
+  ...restProps
+}: React.ComponentProps<"h3">) {
+  const multiStepper = useMultiStepper();
+  const singleStep = useMultiStepperPartUnsafe();
+
+  // If this title is used within a part, use that part here, otherwise
+  // use the current active step (used within MultiStepper directly).
+  // This is useful to allow for titles to be used within steps to have them
+  // within the animation (which may be accessible though!).
+  const current = singleStep?.id ?? multiStepper.controls.step;
+  const part = multiStepper.controls.parts.find((p) => p.id === current);
+
+  if (!part) throw new Error("MultiStepperTitle must be used within a step");
+
+  return (
+    <h3
+      className={cn("text-lg font-medium flex items-center gap-2", className)}
+      {...restProps}
+    >
+      {children}
+      {part.icon}
+      <span>{part.title}</span>
+    </h3>
   );
 }
 
