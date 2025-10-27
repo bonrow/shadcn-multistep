@@ -147,7 +147,9 @@ export function MultiStep<TParts extends MultiStepPartArray>({
           complete: () => {
             const resultParts = res.parts;
             if (!resultParts) throw new Error("No parts data available.");
-            const notCompletePart = parts.find((p) => !(p.id in resultParts));
+            const notCompletePart = parts.find(
+              (p) => p.hasOutput && !(p.id in resultParts)
+            );
             if (notCompletePart)
               throw new Error(`Part "${notCompletePart.id}" is not complete.`);
             return res as MultiStepCheckedResult<TParts>;
