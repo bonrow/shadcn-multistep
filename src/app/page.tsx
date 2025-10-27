@@ -1,7 +1,9 @@
 "use client";
 
+import { zodResolver } from "@hookform/resolvers/zod";
 import { HomeIcon, MailIcon, SendIcon, User2Icon } from "lucide-react";
 import { resolve } from "path";
+import { type DefaultValues, useForm } from "react-hook-form";
 import z from "zod";
 import { partial } from "zod/mini";
 import {
@@ -17,119 +19,37 @@ import {
   MultiStep,
   MultiStepCurrentPart,
   MultiStepFooter,
+  MultiStepPart,
   MultiStepTitle,
 } from "@/registry/new-york/multi-step/multi-step";
-import { defineMultiStepFormPart } from "@/registry/new-york/multi-step/multi-step.form";
 import { MultiStepIndicator } from "@/registry/new-york/multi-step/multi-step.indicator";
 
 const parts = Object.freeze([
-  defineMultiStepFormPart({
-    id: "step-1",
-    indicator: <MailIcon />,
-    title: "What's your email?",
-    output: z.object({
-      email: z.email("Invalid email address").min(2, "Email is required"),
-    }),
-    defaultValues: (data) => ({
-      email: data.email || String(),
-    }),
-    render: ({ form }) => (
-      <>
-        <FormField
-          control={form.control}
-          name="email"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Email</FormLabel>
-              <FormControl>
-                <Input placeholder="Email" {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-      </>
-    ),
-  }),
-  defineMultiStepFormPart({
-    id: "step-2",
-    indicator: <HomeIcon />,
-    title: "Where should we deliver to?",
-    output: z.object({
-      address: z.string().min(2),
-      city: z.string().min(2),
-    }),
-    defaultValues: (data) => ({
-      address: data.address || String(),
-      city: data.city || String(),
-    }),
-    render: ({ form }) => (
-      <>
-        <FormField
-          control={form.control}
-          name="address"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Address</FormLabel>
-              <FormControl>
-                <Input placeholder="Address" {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        <FormField
-          control={form.control}
-          name="city"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>City</FormLabel>
-              <FormControl>
-                <Input placeholder="City" {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-      </>
-    ),
-  }),
-  defineMultiStepFormPart({
-    id: "step-3",
-    indicator: <User2Icon />,
-    title: "Select a username",
-    output: z.object({
-      username: z.string().min(2),
-    }),
-    defaultValues: (data) => ({
-      username: data.username || String(),
-    }),
-    render: ({ form }) => (
-      <FormField
-        control={form.control}
-        name="username"
-        render={({ field }) => (
-          <FormItem>
-            <FormLabel>Username</FormLabel>
-            <FormControl>
-              <Input placeholder="Username" {...field} />
-            </FormControl>
-            <FormMessage />
-          </FormItem>
-        )}
-      />
-    ),
-  }),
   defineMultiStepPart({
     id: "success-panel",
     indicator: <SendIcon />,
     title: "Success!",
-    hasOutput: false,
-    render: () => (
-      <div>You have successfully completed the multi-step form!</div>
-    ),
+    output: z.object({
+      name: z.string().optional(),
+    }),
+    defaults: (data) => ({
+      name: data.name || String(),
+    }),
+    compute: async () => {
+      // Mutate some things and return the result
+      await new Promise((r) => setTimeout(r, 1_000));
+
+      return { isValid: true };
+    },
+    render: ({ defaults: defaultValues, next, part }) => {
+      const form = useForm({
+        resolver: zodResolver(part.output),
+        defaultValues,
+      });
+      return <form onSubmit={form.handleSubmit(next)}>Success!</form>;
+    },
   }),
-] as const);
+]);
 
 export default function Home() {
   return (
@@ -138,24 +58,6 @@ export default function Home() {
       <div className="absolute left-1/2 top-1/2 -translate-1/2 w-sm bg-card p-6 rounded-lg">
         <MultiStep
           parts={parts}
-          completionHandlers={{
-            "step-1": async ({ step, outputs }) => {
-              console.log("Register email:", step, outputs);
-              // Simulate some loading, like with using useMutation()
-              await new Promise((resolve) => setTimeout(resolve, 1_000));
-            },
-            "step-2": async ({ state }) => {
-              const partialState = state.partial();
-              const previousStepState = partialState.parts["step-1"];
-              if (!previousStepState)
-                throw new Error("Previous step was skipped");
-              const email = previousStepState.email;
-              // TODO do something with email
-              console.log("Do something with email", email);
-              // Simulate some loading, like with using useMutation()
-              await new Promise((resolve) => setTimeout(resolve, 1_000));
-            },
-          }}
           onFinish={({ partial, complete }) => {
             // Prints the stepper's partial result with everything gathered.
             console.log("Partial result:", partial());

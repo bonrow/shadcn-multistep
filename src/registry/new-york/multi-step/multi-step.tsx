@@ -26,9 +26,17 @@ type MergeUnionToObject<U> = {
     : never;
 };
 
-/** Readonly array with readonly parts (useful for freezed constants). */
-// biome-ignore lint/suspicious/noExplicitAny: needed for deep reference (render->part)
-export type MultiStepPartArray = ReadonlyArray<Readonly<MultiStepPart<any>>>;
+export type MultiStepOutput = undefined | z.ZodType;
+
+export type MultiStepPartFromStep<
+  TParts extends MultiStepPartArray,
+  TStep extends MultiStep<TParts>,
+> = Extract<TParts[number], { id: TStep }>;
+
+export type MultiStepPartArray = ReadonlyArray<
+  // biome-ignore lint/suspicious/noExplicitAny: simplicity
+  Readonly<MultiStepPart<any, any, any, any, any>>
+>;
 
 /** Extracts a union of all the IDs in `TPart`. */
 export type MultiStep<TParts extends MultiStepPartArray> = TParts[number]["id"];
@@ -39,47 +47,84 @@ export type InferMultiStepOutput<
   TStep extends MultiStep<TParts>,
 > = z.infer<Extract<TParts[number], { id: TStep }>["output"]>;
 
-/** Data representation of a single **part** in a multi-stepper. */
-export type MultiStepPart<
-  TOutput extends z.ZodType = z.ZodType,
-  TId extends string = string,
-  TRenderArgs = MultiStepPartDefaultRenderProps<TOutput>,
-> = {
-  id: TId;
-  title: React.ReactNode;
-  indicator?: React.ReactNode;
-  defaultValues?: (
-    data: Partial<z.infer<TOutput>>,
-  ) => Partial<z.infer<TOutput>>;
-  render: React.FC<TRenderArgs>;
-} & (
-  | { hasOutput: true; output: TOutput }
-  | { hasOutput: false; output?: TOutput }
-);
-
-export type MultiStepPartDefaultRenderProps<TOutput extends z.ZodType> = {
+export type MultiStepPartDefaultRenderProps<TOutput extends MultiStepOutput> = {
   stepper: MultiStepContext;
   defaultValues: Partial<z.infer<TOutput>>;
   part: MultiStepPart<TOutput>;
 };
 
+type GetPartiableKeys<TObj> = {
+  [K in keyof TObj]: TObj[K] extends undefined ? K : never;
+}[keyof TObj];
+
+type DefaultValues<
+  TObject,
+  _TPartKeys extends keyof TObject = GetPartiableKeys<TObject>,
+> = TObject & Partial<Pick<TObject, _TPartKeys>>;
+
+export type MultiStepComputeResult<T> = T & {
+  isValid: boolean;
+};
+
+export type MultiStepPart<
+  TOutput extends MultiStepOutput = MultiStepOutput,
+  TId extends string = string,
+  TComputeResult extends unknown | Promise<unknown> =
+    | unknown
+    | Promise<unknown>,
+  _TOut = TOutput extends undefined ? undefined : z.infer<TOutput>,
+  _TDefaults = DefaultValues<_TOut>,
+> = {
+  id: TId;
+  title: React.ReactNode;
+  indicator?: React.ReactNode;
+  compute?: (arg: {
+    inputs: _TOut;
+    part: MultiStepPart<TOutput, TId, TComputeResult>;
+  }) =>
+    | MultiStepComputeResult<TComputeResult>
+    | Promise<MultiStepComputeResult<TComputeResult>>;
+  /**
+   * Renders this part of the multi-step.
+   *
+   * Use the props' `part` and `defaultValues` to access the part definition
+   * and default values respectively. Also, the `part` does expose the attachments,
+   * meaning you can access them via `part.attachments` to access crucial context.
+   */
+  render: React.FC<{
+    part: MultiStepPart<TOutput, TId, TComputeResult, _TOut, _TDefaults>;
+    context: MultiStepContext;
+    defaults: _TDefaults;
+    next: (
+      ...[output]: undefined extends TOutput
+        ? [output?: _TOut]
+        : [output: _TOut]
+    ) => Promise<TComputeResult>;
+  }>;
+  // biome-ignore lint/suspicious/noExplicitAny: needed for generalization
+} & (any extends TOutput
+  ? { output: TOutput; defaults: (saved: Partial<_TOut>) => _TDefaults }
+  : TOutput extends undefined
+    ? { output?: TOutput; defaults?: (saved: Partial<_TOut>) => _TDefaults }
+    : { output: TOutput; defaults: (saved: Partial<_TOut>) => _TDefaults });
+
 /** Extracts the merged result of all steps through forming an intersection. */
 export type MultiStepMergedResult<TParts extends MultiStepPartArray> =
   MergeUnionToObject<FilterOutput<TParts[number]>>;
 
-type FilterOutput<T> = T extends { hasOutput: true; output: infer TOutput }
+type FilterOutput<T> = T extends { output: infer TOutput }
   ? unknown extends z.infer<TOutput>
     ? never
     : z.infer<TOutput>
   : never;
 
 export type MultiStepPartsResult<TParts extends MultiStepPartArray> = {
-  [K in MultiStep<TParts> as Extract<
+  [K in MultiStep<TParts> as undefined extends Extract<
     TParts[number],
     { id: K }
-  >["hasOutput"] extends true
-    ? K
-    : never]: InferMultiStepOutput<TParts, K>;
+  >["output"]
+    ? never
+    : K]: InferMultiStepOutput<TParts, K>;
 };
 
 export type MultiStepCheckedResult<TParts extends MultiStepPartArray> = {
@@ -103,32 +148,20 @@ export type MultiStepStateProbeContext<TParts extends MultiStepPartArray> = {
   complete(): MultiStepCheckedResult<TParts>;
 };
 
-export type CompleteStepResult<
-  TParts extends MultiStepPartArray,
-  TStep extends MultiStep<TParts>,
-> = (Extract<TParts[number], { id: TStep }> extends { hasOutput: true }
-  ? { step: TStep; outputs: InferMultiStepOutput<TParts, TStep> }
-  : { step: TStep; outputs?: InferMultiStepOutput<TParts, TStep> }) & {
-  state: MultiStepStateProbeContext<TParts>;
-};
-
-export type CompleteStepMap<TParts extends MultiStepPartArray> = {
-  [K in MultiStep<TParts>]?: (
-    result: CompleteStepResult<TParts, K>,
-  ) => unknown | Promise<unknown>;
-};
-
 export const defineMultiStepParts = <TParts extends MultiStepPartArray>(
   parts: TParts,
 ) => parts;
 
 /** Type helper to define a multi step part with proper generics. */
 export const defineMultiStepPart = <
-  TOutput extends z.ZodType,
+  TOutput extends MultiStepOutput,
   TId extends string,
+  TComputeResult extends unknown | Promise<unknown> =
+    | unknown
+    | Promise<unknown>,
 >(
-  part: MultiStepPart<TOutput, TId>,
-): MultiStepPart<TOutput, TId> => part;
+  part: MultiStepPart<TOutput, TId, TComputeResult>,
+): Readonly<MultiStepPart<TOutput, TId, TComputeResult>> => part;
 
 /** [Framer Motion] used to animate the multi-step form */
 const slideVariants = {
@@ -154,7 +187,6 @@ export function MultiStep<TParts extends MultiStepPartArray>({
   step,
   defaultStep = parts[0]?.id,
   onStepChange,
-  completionHandlers,
   onFinish,
   className,
   state,
@@ -165,7 +197,6 @@ export function MultiStep<TParts extends MultiStepPartArray>({
   defaultStep?: MultiStep<TParts>;
   step?: MultiStep<TParts>;
   onStepChange?: (step: MultiStep<TParts>) => void;
-  completionHandlers?: CompleteStepMap<TParts>;
   onFinish?: (ctx: MultiStepStateProbeContext<TParts>) => unknown;
   state?: MultiStepContext["state"];
   disabled?: boolean;
@@ -182,9 +213,6 @@ export function MultiStep<TParts extends MultiStepPartArray>({
 
   const onStepChangeRef = React.useRef(onStepChange);
   onStepChangeRef.current = onStepChange;
-
-  const completionHandlersRef = React.useRef(completionHandlers);
-  completionHandlersRef.current = completionHandlers;
 
   React.useEffect(() => {
     if (step === undefined) return;
@@ -203,7 +231,7 @@ export function MultiStep<TParts extends MultiStepPartArray>({
         const resultParts = res().parts;
         if (!resultParts) throw new Error("No parts data available.");
         const notCompletePart = parts.find(
-          (p) => p.hasOutput && !(p.id in resultParts),
+          (p) => p.output && !(p.id in resultParts),
         );
         if (notCompletePart)
           throw new Error(`Part "${notCompletePart.id}" is not complete.`);
@@ -256,31 +284,17 @@ export function MultiStep<TParts extends MultiStepPartArray>({
         result: () => resultRef.current,
         onComplete: async (data) => {
           const part = controls.part();
-          if (part.hasOutput) {
-            const p = (resultRef.current.parts ??
-              {}) as MultiStepUncheckedResult<TParts>["parts"];
-            p[_step as keyof typeof p] = data;
-            resultRef.current.parts =
-              p as MultiStepUncheckedResult<TParts>["parts"];
-            resultRef.current.merged = {
-              ...resultRef.current.merged,
-              ...data,
-            };
-          }
-          try {
-            _setState("submitting");
-            const completionHandlers = completionHandlersRef.current;
-            if (completionHandlers?.[_step]) {
-              await completionHandlers[_step]({
-                step: _step,
-                outputs: data,
-                state: createStateProbe(() => resultRef.current),
-              });
-            }
-            controls.next(); // Auto-complete on last step submission
-          } finally {
-            _setState("idle");
-          }
+          if (!part.output) return;
+          // Store the data in the result ref
+          const p = (resultRef.current.parts ??
+            {}) as MultiStepUncheckedResult<TParts>["parts"];
+          p[_step as keyof typeof p] = data;
+          resultRef.current.parts =
+            p as MultiStepUncheckedResult<TParts>["parts"];
+          resultRef.current.merged = {
+            ...resultRef.current.merged,
+            ...data,
+          };
         },
       }}
     >
@@ -336,15 +350,27 @@ function MultiStepPart<
   const part = parts.find((s) => s.id === step);
   if (!part) throw new Error(`Step with id "${step}" does not exist.`);
 
-  const resultParts = multiStep.result().parts ?? {};
+  const resultParts = multiStep.result().parts;
 
-  const defaultValues = part.defaultValues
-    ? part.defaultValues(
-        part.id in resultParts
-          ? resultParts[part.id as keyof typeof resultParts]
-          : {},
-      )
-    : {};
+  const defaults = React.useMemo(() => {
+    if (!resultParts || !part.defaults) return {};
+    if (!(part.id in resultParts)) return part.defaults({});
+    return part.defaults(resultParts[part.id as keyof typeof resultParts]);
+  }, [part, resultParts]);
+
+  const next = React.useCallback(
+    async (output: unknown) => {
+      if (part.compute) {
+        const res = await part.compute({ inputs: output, part });
+        if (!res.isValid) return;
+      }
+      if (multiStep.controls.step === part.id) {
+        multiStep.onComplete(output);
+      }
+      multiStep.controls.next();
+    },
+    [multiStep, part],
+  );
 
   return (
     <MultiStepPartProvider value={part}>
@@ -359,9 +385,10 @@ function MultiStepPart<
         {...restProps}
       >
         <part.render
-          stepper={multiStep}
-          defaultValues={defaultValues}
           part={part}
+          context={multiStep}
+          defaults={defaults}
+          next={next}
         />
       </motion.div>
     </MultiStepPartProvider>
@@ -373,15 +400,15 @@ export function MultiStepTitle({
   children,
   ...restProps
 }: React.ComponentProps<"h3">) {
-  const MultiStep = useMultiStep();
+  const multiStep = useMultiStep();
   const singleStep = useMultiStepPartUnsafe();
 
   // If this title is used within a part, use that part here, otherwise
   // use the current active step (used within MultiStep directly).
   // This is useful to allow for titles to be used within steps to have them
   // within the animation (which may be accessible though!).
-  const current = singleStep?.id ?? MultiStep.controls.step;
-  const part = MultiStep.controls.parts.find((p) => p.id === current);
+  const current = singleStep?.id ?? multiStep.controls.step;
+  const part = multiStep.controls.parts.find((p) => p.id === current);
 
   if (!part) throw new Error("MultiStepTitle must be used within a step");
 
