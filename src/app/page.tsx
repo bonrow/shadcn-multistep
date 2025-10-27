@@ -10,26 +10,25 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import {
-  defineMultiStepPart,
   MultiStepper,
   MultiStepperCurrentStep,
   MultiStepperFooter,
-  MultiStepperPartForm,
   MultiStepperTitle,
 } from "@/registry/new-york/multi-stepper/multi-stepper";
+import { defineMultiStepFormPart } from "@/registry/new-york/multi-stepper/multi-stepper.form";
 
 const parts = Object.freeze([
-  defineMultiStepPart({
+  defineMultiStepFormPart({
     id: "step-1",
     title: "What's your email?",
-    formData: z.object({
+    output: z.object({
       email: z.email("Invalid email address").min(2, "Email is required"),
     }),
     defaultValues: (data) => ({
       email: data.email || String(),
     }),
     render: ({ form }) => (
-      <MultiStepperPartForm form={form}>
+      <>
         <FormField
           control={form.control}
           name="email"
@@ -43,13 +42,13 @@ const parts = Object.freeze([
             </FormItem>
           )}
         />
-      </MultiStepperPartForm>
+      </>
     ),
   }),
-  defineMultiStepPart({
+  defineMultiStepFormPart({
     id: "step-2",
     title: "Where should we deliver to?",
-    formData: z.object({
+    output: z.object({
       address: z.string().min(2),
       city: z.string().min(2),
     }),
@@ -58,7 +57,7 @@ const parts = Object.freeze([
       city: data.city || String(),
     }),
     render: ({ form }) => (
-      <MultiStepperPartForm form={form}>
+      <>
         <FormField
           control={form.control}
           name="address"
@@ -85,34 +84,32 @@ const parts = Object.freeze([
             </FormItem>
           )}
         />
-      </MultiStepperPartForm>
+      </>
     ),
   }),
-  defineMultiStepPart({
+  defineMultiStepFormPart({
     id: "step-3",
     title: "Select a username",
-    formData: z.object({
+    output: z.object({
       username: z.string().min(2),
     }),
     defaultValues: (data) => ({
       username: data.username || String(),
     }),
     render: ({ form }) => (
-      <MultiStepperPartForm form={form}>
-        <FormField
-          control={form.control}
-          name="username"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Username</FormLabel>
-              <FormControl>
-                <Input placeholder="Username" {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-      </MultiStepperPartForm>
+      <FormField
+        control={form.control}
+        name="username"
+        render={({ field }) => (
+          <FormItem>
+            <FormLabel>Username</FormLabel>
+            <FormControl>
+              <Input placeholder="Username" {...field} />
+            </FormControl>
+            <FormMessage />
+          </FormItem>
+        )}
+      />
     ),
   }),
 ] as const);

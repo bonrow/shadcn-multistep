@@ -1,6 +1,6 @@
 import React from "react";
 import type {
-  InferMultiStepFormData,
+  InferMultiStepOutput,
   MultiStep,
   MultiStepPartArray,
   MultiStepperUncheckedResult,
@@ -18,7 +18,7 @@ export interface MultiStepperContext<
   readonly controls: MultiStepperControls<TParts>;
   readonly result: () => Partial<MultiStepperUncheckedResult<TParts>>;
 
-  onComplete(data: InferMultiStepFormData<TParts, TStep>): void;
+  onComplete(data: InferMultiStepOutput<TParts, TStep>): void;
 }
 
 const MultiStepperContext = React.createContext<MultiStepperContext | null>(

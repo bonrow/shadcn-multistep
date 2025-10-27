@@ -1,19 +1,15 @@
 "use client";
-
-import { zodResolver } from "@hookform/resolvers/zod";
 import { ArrowLeftIcon, ArrowRightIcon } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import React from "react";
-import { type FieldValues, useForm } from "react-hook-form";
 import type { z } from "zod";
 import { Button } from "@/components/ui/button";
-import { Form } from "@/components/ui/form";
 import { cn } from "@/lib/utils";
 import {
+  type MultiStepperContext,
   MultiStepperPartProvider,
   MultiStepperProvider,
   useMultiStepper,
-  useMultiStepperPart,
   useMultiStepperPartUnsafe,
 } from "./multi-stepper.context";
 import { ObservableMultiStepperControls } from "./multi-stepper.controls";
@@ -26,7 +22,7 @@ type MergeUnionToObject<U> = {
 };
 
 // biome-ignore lint/suspicious/noExplicitAny: not needed
-type FormSchema = z.ZodType<any, FieldValues>;
+export type OutputSchema = z.ZodType<any, Record<string, any>>;
 
 /** Readonly array with readonly parts (useful for freezed constants). */
 // biome-ignore lint/suspicious/noExplicitAny: needed for deep reference (render->part)
@@ -35,33 +31,39 @@ export type MultiStepPartArray = ReadonlyArray<Readonly<MultiStepPart<any>>>;
 /** Extracts a union of all the IDs in `TPart`. */
 export type MultiStep<TParts extends MultiStepPartArray> = TParts[number]["id"];
 
-/** Infers the `formData` of `TStep` in `TParts`, or returns `never`. */
-export type InferMultiStepFormData<
+/** Infers the `output` of `TStep` in `TParts`, or returns `never`. */
+export type InferMultiStepOutput<
   TParts extends MultiStepPartArray,
   TStep extends MultiStep<TParts>
-> = z.infer<Extract<TParts[number], { id: TStep }>["formData"]>;
+> = z.infer<Extract<TParts[number], { id: TStep }>["output"]>;
 
 /** Data representation of a single **part** in a multi-stepper. */
-export type MultiStepPart<TFormData extends FormSchema = FormSchema> = {
+export type MultiStepPart<
+  TOutput extends OutputSchema = OutputSchema,
+  TRenderArgs = MultiStepPartDefaultRenderProps<TOutput>
+> = {
   id: string;
   title: React.ReactNode;
-  formData: TFormData;
+  output: TOutput;
   icon?: React.ReactNode;
   defaultValues?: (
-    data: Partial<z.infer<TFormData>>
-  ) => Partial<z.infer<TFormData>>;
-  render: React.FC<{
-    form: ReturnType<typeof useForm<z.infer<TFormData>>>;
-    part: MultiStepPart<TFormData>;
-  }>;
+    data: Partial<z.infer<TOutput>>
+  ) => Partial<z.infer<TOutput>>;
+  render: React.FC<TRenderArgs>;
+};
+
+export type MultiStepPartDefaultRenderProps<TOutput extends OutputSchema> = {
+  stepper: MultiStepperContext;
+  defaultValues: Partial<z.infer<TOutput>>;
+  part: MultiStepPart<TOutput>;
 };
 
 /** Extracts the merged result of all steps through forming an intersection. */
 export type MultiStepperMergedResult<TParts extends MultiStepPartArray> =
-  MergeUnionToObject<z.infer<TParts[number]["formData"]>>;
+  MergeUnionToObject<z.infer<TParts[number]["output"]>>;
 
 export type MultiStepperPartsResult<TParts extends MultiStepPartArray> = {
-  [K in MultiStep<TParts>]: InferMultiStepFormData<TParts, K>;
+  [K in MultiStep<TParts>]: InferMultiStepOutput<TParts, K>;
 };
 
 export type MultiStepperCheckedResult<TParts extends MultiStepPartArray> = {
@@ -75,9 +77,9 @@ export type MultiStepperUncheckedResult<TParts extends MultiStepPartArray> = {
 };
 
 /** Type helper to define a multi step part with proper generics. */
-export const defineMultiStepPart = <TFormData extends FormSchema>(
-  part: MultiStepPart<TFormData>
-): MultiStepPart<TFormData> => part;
+export const defineMultiStepPart = <TOutput extends OutputSchema>(
+  part: MultiStepPart<TOutput>
+): MultiStepPart<TOutput> => part;
 
 /** [Framer Motion] used to animate the multi-step form */
 const slideVariants = {
@@ -238,12 +240,9 @@ function MultiStepPart<
   const part = parts.find((s) => s.id === step);
   if (!part) throw new Error(`Step with id "${step}" does not exist.`);
 
-  const form = useForm({
-    resolver: zodResolver(part.formData),
-    defaultValues: part.defaultValues?.(
-      multiStep.result().parts?.[part.id] ?? {}
-    ),
-  });
+  const defaultValues = part.defaultValues
+    ? part.defaultValues(multiStep.result().parts?.[part.id] ?? {})
+    : {};
 
   return (
     <MultiStepperPartProvider value={part}>
@@ -257,35 +256,13 @@ function MultiStepPart<
         className={cn("relative w-full", className)}
         {...restProps}
       >
-        <part.render form={form} part={part} />
+        <part.render
+          stepper={multiStep}
+          defaultValues={defaultValues}
+          part={part}
+        />
       </motion.div>
     </MultiStepperPartProvider>
-  );
-}
-
-export function MultiStepperPartForm({
-  form,
-  className,
-  children,
-  ...restProps
-}: React.ComponentProps<"form"> & {
-  // biome-ignore lint/suspicious/noExplicitAny: not needed
-  form: ReturnType<typeof useForm<any>>;
-}) {
-  const multiStep = useMultiStepper();
-  const thisPart = useMultiStepperPart();
-
-  return (
-    <Form {...form}>
-      <form
-        id={thisPart.id}
-        className={cn("space-y-4", className)}
-        onSubmit={form.handleSubmit(multiStep.onComplete)}
-        {...restProps}
-      >
-        {children}
-      </form>
-    </Form>
   );
 }
 

@@ -8,6 +8,28 @@
       "type": "registry:block",
       "title": "Hello World",
       "description": "A simple hello world component.",
+      "registryDependencies": ["button"],
+      "dependencies": ["zod@4.0.0"],
+      "files": [
+        {
+          "path": "./src/registry/new-york/multi-stepper/multi-stepper.tsx",
+          "type": "registry:component"
+        },
+        {
+          "path": "./src/registry/new-york/multi-stepper/multi-stepper.context.tsx",
+          "type": "registry:component"
+        },
+        {
+          "path": "./src/registry/new-york/multi-stepper/multi-stepper.controls.ts",
+          "type": "registry:component"
+        }
+      ]
+    },
+    {
+      "name": "multi-stepper-form",
+      "type": "registry:block",
+      "title": "Hello World",
+      "description": "A simple hello world component.",
       "registryDependencies": ["button", "form"],
       "dependencies": ["zod@4.0.0", "react-hook-form@^7.65.0"],
       "files": [
@@ -21,6 +43,10 @@
         },
         {
           "path": "./src/registry/new-york/multi-stepper/multi-stepper.controls.ts",
+          "type": "registry:component"
+        },
+        {
+          "path": "./src/registry/new-york/multi-stepper/multi-stepper.form.tsx",
           "type": "registry:component"
         }
       ]
