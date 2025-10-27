@@ -349,7 +349,7 @@ export function MultiStepperFooter({
         </Button>
       ) : (
         <Button type="submit" form={multiStep.controls.part().id}>
-          Finish
+          Complete
           <ArrowRightIcon />
         </Button>
       )}

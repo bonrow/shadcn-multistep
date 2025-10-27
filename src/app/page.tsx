@@ -123,7 +123,6 @@ export default function Home() {
       Hello world
       <div className="absolute left-1/2 top-1/2 -translate-1/2 w-sm bg-card p-6 rounded-lg">
         <MultiStepper
-          key="stepper"
           parts={parts}
           onFinish={({ partial, complete }) => {
             // Prints the stepper's partial result with everything gathered.
