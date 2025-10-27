@@ -91,6 +91,13 @@ export default function Home() {
       <MultiStepper
         parts={parts}
         className="absolute left-1/2 top-1/2 -translate-1/2 w-sm bg-card p-6 rounded-lg"
+        onFinish={({ partial, complete }) => {
+          // Prints the stepper's partial result with everything gathered.
+          console.log("Partial result:", partial());
+
+          // Prints the stepper's complete result and throws an error if it's not complete.
+          console.log("Full result:", complete());
+        }}
       >
         <MultiStepperCurrentStep />
         <MultiStepperFooter />

@@ -53,14 +53,21 @@ export type MultiStepPart<TFormData extends FormSchema = FormSchema> = {
 };
 
 /** Extracts the merged result of all steps through forming an intersection. */
-export type MultiStepMergedResult<TParts extends MultiStepPartArray> =
+export type MultiStepperMergedResult<TParts extends MultiStepPartArray> =
   MergeUnionToObject<z.infer<TParts[number]["formData"]>>;
 
-export type MultiStepperResult<TParts extends MultiStepPartArray> = {
-  merged: MultiStepMergedResult<TParts>;
-  parts: {
-    [K in MultiStep<TParts>]: InferMultiStepFormData<TParts, K>;
-  };
+export type MultiStepperPartsResult<TParts extends MultiStepPartArray> = {
+  [K in MultiStep<TParts>]: InferMultiStepFormData<TParts, K>;
+};
+
+export type MultiStepperCheckedResult<TParts extends MultiStepPartArray> = {
+  merged: MultiStepperMergedResult<TParts>;
+  parts: MultiStepperPartsResult<TParts>;
+};
+
+export type MultiStepperUncheckedResult<TParts extends MultiStepPartArray> = {
+  merged: Partial<MultiStepperMergedResult<TParts>>;
+  parts: Partial<MultiStepperCheckedResult<TParts>["parts"]>;
 };
 
 /** Type helper to define a multi step part with proper generics. */
@@ -102,11 +109,18 @@ export function MultiStepper<TParts extends MultiStepPartArray>({
   defaultStep?: MultiStep<TParts>;
   step?: MultiStep<TParts>;
   onStepChange?: (step: MultiStep<TParts>) => void;
-  onFinish?: (data: MultiStepperResult<TParts>) => void;
+  onFinish?: (result: {
+    /** Returns the stepper's partial result with everything gathered. */
+    partial(): MultiStepperUncheckedResult<TParts>;
+    /** Returns the stepper's complete result and throws an error if it's not complete. */
+    complete(): MultiStepperCheckedResult<TParts>;
+  }) => void;
 }) {
   const directionRef = React.useRef(0);
   const [_step, _setStep] = React.useState(defaultStep);
-  const resultRef = React.useRef<Partial<MultiStepperResult<TParts>>>({});
+  const resultRef = React.useRef<Partial<MultiStepperUncheckedResult<TParts>>>(
+    {}
+  );
 
   if (_step == null) throw new Error("MultiStepper requires at least one step");
 
@@ -126,7 +140,18 @@ export function MultiStepper<TParts extends MultiStepPartArray>({
       parts,
       step: _step,
       onFinish() {
-        onFinishRef.current?.(resultRef.current as MultiStepperResult<TParts>);
+        const res = resultRef.current;
+        onFinishRef.current?.({
+          partial: () => res as MultiStepperUncheckedResult<TParts>,
+          complete: () => {
+            const resultParts = res.parts;
+            if (!resultParts) throw new Error("No parts data available.");
+            const notCompletePart = parts.find((p) => !(p.id in resultParts));
+            if (notCompletePart)
+              throw new Error(`Part "${notCompletePart.id}" is not complete.`);
+            return res as MultiStepperCheckedResult<TParts>;
+          },
+        });
       },
       onStepChange(newStep) {
         const currentIndex = this.index();
@@ -148,9 +173,10 @@ export function MultiStepper<TParts extends MultiStepPartArray>({
         controls,
         onComplete(data) {
           const p = (resultRef.current.parts ??
-            {}) as MultiStepperResult<TParts>["parts"];
+            {}) as MultiStepperUncheckedResult<TParts>["parts"];
           p[_step] = data;
-          resultRef.current.parts = p as MultiStepperResult<TParts>["parts"];
+          resultRef.current.parts =
+            p as MultiStepperUncheckedResult<TParts>["parts"];
           resultRef.current.merged = {
             ...resultRef.current.merged,
             ...data,
