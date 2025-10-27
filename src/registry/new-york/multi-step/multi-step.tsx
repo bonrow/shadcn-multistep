@@ -14,9 +14,11 @@ import {
 } from "./multi-step.context";
 import { ObservableMultiStepControls } from "./multi-step.controls";
 
-//! You should move these type helpers to a separate file if you plan to reuse them
+// ########################### <TYPE HELPERS>  ###########################
+// Move these helpers if you find them useful elsewhere
 // biome-ignore lint/suspicious/noExplicitAny: needed for type helper
 type UnionKeys<U> = U extends any ? keyof U : never;
+
 type MergeUnionToObject<U> = {
   // biome-ignore lint/suspicious/noExplicitAny: needed for type helper
   [K in UnionKeys<U>]: U extends any
@@ -26,7 +28,21 @@ type MergeUnionToObject<U> = {
     : never;
 };
 
-export type MultiStepOutput = undefined | z.ZodType;
+type GetPartiableKeys<TObj> = {
+  [K in keyof TObj]: TObj[K] extends undefined ? K : never;
+}[keyof TObj];
+
+type WithRequired<T, K extends keyof T> = T & {
+  [P in K]-?: T[P];
+};
+
+type DefaultValues<
+  TObject,
+  _TPartKeys extends keyof TObject = GetPartiableKeys<TObject>,
+> = TObject & Partial<Pick<TObject, _TPartKeys>>;
+// ########################### </ TYPE HELPERS>  ###########################
+
+export type MultiStepOutput = z.ZodType | undefined;
 
 export type MultiStepPartFromStep<
   TParts extends MultiStepPartArray,
@@ -53,14 +69,24 @@ export type MultiStepPartDefaultRenderProps<TOutput extends MultiStepOutput> = {
   part: MultiStepPart<TOutput>;
 };
 
-type GetPartiableKeys<TObj> = {
-  [K in keyof TObj]: TObj[K] extends undefined ? K : never;
-}[keyof TObj];
+type PartWithGuaranteedOutput<
+  TOutput extends MultiStepOutput = MultiStepOutput,
+  TId extends string = string,
+  TComputeResult extends unknown | Promise<unknown> =
+    | unknown
+    | Promise<unknown>,
+> = WithRequired<
+  MultiStepPart<TOutput, TId, TComputeResult>,
+  "output" | "defaults"
+>;
 
-type DefaultValues<
-  TObject,
-  _TPartKeys extends keyof TObject = GetPartiableKeys<TObject>,
-> = TObject & Partial<Pick<TObject, _TPartKeys>>;
+type PartAsGuaranteedOutput<TPart> = TPart extends MultiStepPart<
+  infer TOutput,
+  infer TId,
+  infer TComputeResult
+>
+  ? PartWithGuaranteedOutput<TOutput, TId, TComputeResult>
+  : never;
 
 export type MultiStepComputeResult<T> = T & {
   isValid: boolean;
@@ -69,9 +95,7 @@ export type MultiStepComputeResult<T> = T & {
 export type MultiStepPart<
   TOutput extends MultiStepOutput = MultiStepOutput,
   TId extends string = string,
-  TComputeResult extends unknown | Promise<unknown> =
-    | unknown
-    | Promise<unknown>,
+  TComputeResult = unknown,
   _TOut = TOutput extends undefined ? undefined : z.infer<TOutput>,
   _TDefaults = DefaultValues<_TOut>,
 > = {
@@ -80,10 +104,11 @@ export type MultiStepPart<
   indicator?: React.ReactNode;
   compute?: (arg: {
     inputs: _TOut;
-    part: MultiStepPart<TOutput, TId, TComputeResult>;
+    part: PartWithGuaranteedOutput<TOutput, TId, TComputeResult>;
   }) =>
     | MultiStepComputeResult<TComputeResult>
     | Promise<MultiStepComputeResult<TComputeResult>>;
+
   /**
    * Renders this part of the multi-step.
    *
@@ -92,7 +117,7 @@ export type MultiStepPart<
    * meaning you can access them via `part.attachments` to access crucial context.
    */
   render: React.FC<{
-    part: MultiStepPart<TOutput, TId, TComputeResult, _TOut, _TDefaults>;
+    part: PartWithGuaranteedOutput<TOutput, TId, TComputeResult>;
     context: MultiStepContext;
     defaults: _TDefaults;
     next: (
@@ -101,12 +126,10 @@ export type MultiStepPart<
         : [output: _TOut]
     ) => Promise<TComputeResult>;
   }>;
-  // biome-ignore lint/suspicious/noExplicitAny: needed for generalization
-} & (any extends TOutput
-  ? { output: TOutput; defaults: (saved: Partial<_TOut>) => _TDefaults }
-  : TOutput extends undefined
-    ? { output?: TOutput; defaults?: (saved: Partial<_TOut>) => _TDefaults }
-    : { output: TOutput; defaults: (saved: Partial<_TOut>) => _TDefaults });
+} & (
+  | { output: TOutput; defaults: (saved: Partial<_TOut>) => _TDefaults }
+  | { output?: TOutput; defaults?: (saved: Partial<_TOut>) => _TDefaults }
+);
 
 /** Extracts the merged result of all steps through forming an intersection. */
 export type MultiStepMergedResult<TParts extends MultiStepPartArray> =
@@ -156,9 +179,7 @@ export const defineMultiStepParts = <TParts extends MultiStepPartArray>(
 export const defineMultiStepPart = <
   TOutput extends MultiStepOutput,
   TId extends string,
-  TComputeResult extends unknown | Promise<unknown> =
-    | unknown
-    | Promise<unknown>,
+  TComputeResult = void,
 >(
   part: MultiStepPart<TOutput, TId, TComputeResult>,
 ): Readonly<MultiStepPart<TOutput, TId, TComputeResult>> => part;
@@ -361,7 +382,10 @@ function MultiStepPart<
   const next = React.useCallback(
     async (output: unknown) => {
       if (part.compute) {
-        const res = await part.compute({ inputs: output, part });
+        const res = await part.compute({
+          inputs: output,
+          part: part as PartAsGuaranteedOutput<typeof part>,
+        });
         if (!res.isValid) return;
       }
       if (multiStep.controls.step === part.id) {
@@ -385,7 +409,7 @@ function MultiStepPart<
         {...restProps}
       >
         <part.render
-          part={part}
+          part={part as PartAsGuaranteedOutput<typeof part>}
           context={multiStep}
           defaults={defaults}
           next={next}
@@ -425,8 +449,11 @@ export function MultiStepTitle({
 
 export function MultiStepFooter({
   className,
+  onNext,
   ...restProps
-}: Omit<React.ComponentProps<"div">, "children">) {
+}: Omit<React.ComponentProps<"div">, "children"> & {
+  onNext?: () => void;
+}) {
   const multiStep = useMultiStep();
 
   return (
@@ -449,20 +476,12 @@ export function MultiStepFooter({
         </Button>
       )}
       {multiStep.controls.hasNext() ? (
-        <Button
-          type="submit"
-          form={multiStep.controls.part().id}
-          disabled={multiStep.disabled}
-        >
+        <Button type="submit" disabled={multiStep.disabled} onSubmit={onNext}>
           Next
           <ArrowRightIcon />
         </Button>
       ) : (
-        <Button
-          type="submit"
-          form={multiStep.controls.part().id}
-          disabled={multiStep.disabled}
-        >
+        <Button type="submit" disabled={multiStep.disabled} onSubmit={onNext}>
           Complete
           <ArrowRightIcon />
         </Button>

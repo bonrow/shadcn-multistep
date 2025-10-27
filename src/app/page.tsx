@@ -1,12 +1,19 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { HomeIcon, MailIcon, SendIcon, User2Icon } from "lucide-react";
+import {
+  CheckIcon,
+  HomeIcon,
+  MailIcon,
+  SendIcon,
+  User2Icon,
+} from "lucide-react";
 import { resolve } from "path";
-import { type DefaultValues, useForm } from "react-hook-form";
+import { type DefaultValues, useForm, useFormContext } from "react-hook-form";
 import z from "zod";
 import { partial } from "zod/mini";
 import {
+  Form,
   FormControl,
   FormField,
   FormItem,
@@ -19,39 +26,58 @@ import {
   MultiStep,
   MultiStepCurrentPart,
   MultiStepFooter,
-  MultiStepPart,
   MultiStepTitle,
 } from "@/registry/new-york/multi-step/multi-step";
 import { MultiStepIndicator } from "@/registry/new-york/multi-step/multi-step.indicator";
 
 const parts = Object.freeze([
   defineMultiStepPart({
+    id: "name-step",
+    indicator: <User2Icon />,
+    title: "What is your name?",
+    output: z.object({
+      lastName: z.string(),
+      firstName: z.string(),
+    }),
+    defaults: (data) => ({
+      lastName: data.lastName || String(),
+      firstName: data.firstName || String(),
+    }),
+    render: ({ defaults, next, part }) => {
+      if (!part.output) throw new Error("Part must have output");
+      const form = useForm({
+        resolver: zodResolver(part.output),
+        defaultValues: defaults,
+      });
+      return (
+        <Form {...form}>
+          <NameForm next={next} />
+          <MultiStepFooter />
+        </Form>
+      );
+    },
+  }),
+
+  defineMultiStepPart({
     id: "success-panel",
     indicator: <SendIcon />,
     title: "Success!",
-    output: z.object({
-      name: z.string().optional(),
-    }),
-    defaults: (data) => ({
-      name: data.name || String(),
-    }),
-    compute: async () => {
-      // Mutate some things and return the result
-      await new Promise((r) => setTimeout(r, 1_000));
-
-      return { isValid: true };
-    },
-    render: ({ defaults: defaultValues, next, part }) => {
-      const form = useForm({
-        resolver: zodResolver(part.output),
-        defaultValues,
-      });
-      return <form onSubmit={form.handleSubmit(next)}>Success!</form>;
-    },
+    defaults: () => undefined as never,
+    render: ({ next }) => (
+      <div>
+        <span className="flex items-center gap-2">
+          <CheckIcon />
+          Success!
+        </span>
+        <MultiStepFooter onNext={() => next()} />
+      </div>
+    ),
   }),
 ]);
 
 export default function Home() {
+  // Use mutation query
+
   return (
     <div>
       Hello world
@@ -69,9 +95,50 @@ export default function Home() {
           <MultiStepIndicator />
           <MultiStepTitle />
           <MultiStepCurrentPart />
-          <MultiStepFooter />
         </MultiStep>
       </div>
     </div>
+  );
+}
+
+function NameForm({
+  next,
+}: {
+  next: (data: { firstName: string; lastName: string }) => void;
+}) {
+  const form = useFormContext<{
+    firstName: string;
+    lastName: string;
+  }>();
+
+  return (
+    <form onSubmit={form.handleSubmit(next)}>
+      <FormField
+        control={form.control}
+        name="firstName"
+        render={({ field }) => (
+          <FormItem>
+            <FormLabel>First Name</FormLabel>
+            <FormControl>
+              <Input {...field} />
+            </FormControl>
+            <FormMessage />
+          </FormItem>
+        )}
+      />
+      <FormField
+        control={form.control}
+        name="lastName"
+        render={({ field }) => (
+          <FormItem>
+            <FormLabel>First Name</FormLabel>
+            <FormControl>
+              <Input {...field} />
+            </FormControl>
+            <FormMessage />
+          </FormItem>
+        )}
+      />
+    </form>
   );
 }
