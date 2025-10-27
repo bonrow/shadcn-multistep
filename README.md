@@ -5,6 +5,9 @@ Completely type-safe. In **React** using **shadcn**, **zod** and **react-hook-fo
 pnpm dlx shadcn@latest add https://shadcn-multistep.vercel.app/r/multi-step.json
 ```
 
+> [!IMPORTANT]
+> This project is still very early stage, but works after intensive manual tests. Automatic tests and a proper README are also planned.
+
 ## Example
 ```tsx
 import {
