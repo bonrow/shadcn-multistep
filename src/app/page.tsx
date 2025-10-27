@@ -1,15 +1,7 @@
 "use client";
 
-import {
-  CheckCircleIcon,
-  CheckIcon,
-  FileInputIcon,
-  HomeIcon,
-  MailIcon,
-  SendIcon,
-  User2Icon,
-  UserIcon,
-} from "lucide-react";
+import { HomeIcon, MailIcon, SendIcon, User2Icon } from "lucide-react";
+import { resolve } from "path";
 import z from "zod";
 import {
   FormControl,
@@ -145,6 +137,18 @@ export default function Home() {
       <div className="absolute left-1/2 top-1/2 -translate-1/2 w-sm bg-card p-6 rounded-lg">
         <MultiStep
           parts={parts}
+          completionHandlers={{
+            "step-1": async ({ step, outputs }) => {
+              console.log("Completed step:", step, outputs);
+              await new Promise((resolve) => setTimeout(resolve, 1_000));
+            },
+            "step-2": async ({ step, outputs }) => {
+              console.log("Completed step:", step, outputs);
+            },
+            "step-3": async ({ step, outputs }) => {
+              console.log("Completed step:", step, outputs);
+            },
+          }}
           onFinish={({ partial, complete }) => {
             // Prints the stepper's partial result with everything gathered.
             console.log("Partial result:", partial());

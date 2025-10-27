@@ -9,7 +9,7 @@ import type { MultiStepControls } from "./multi-step.controls";
 
 export interface MultiStepContext<
   TParts extends MultiStepPartArray = MultiStepPartArray,
-  TStep extends MultiStep<TParts> = MultiStep<TParts>
+  TStep extends MultiStep<TParts> = MultiStep<TParts>,
 > {
   /** The current direction of the stepper. */
   readonly direction: number;
@@ -18,7 +18,14 @@ export interface MultiStepContext<
   readonly controls: MultiStepControls<TParts>;
   readonly result: () => Partial<MultiStepUncheckedResult<TParts>>;
 
-  onComplete(data: InferMultiStepOutput<TParts, TStep>): void;
+  readonly state: "idle" | "submitting";
+  readonly disabled: boolean | undefined;
+
+  setState(state: "idle" | "submitting"): void;
+
+  onComplete(
+    data: InferMultiStepOutput<TParts, TStep>,
+  ): unknown | Promise<unknown>;
 }
 
 const MultiStepContext = React.createContext<MultiStepContext | null>(null);

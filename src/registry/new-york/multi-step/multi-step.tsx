@@ -36,20 +36,20 @@ export type MultiStep<TParts extends MultiStepPartArray> = TParts[number]["id"];
 /** Infers the `output` of `TStep` in `TParts`, or returns `never`. */
 export type InferMultiStepOutput<
   TParts extends MultiStepPartArray,
-  TStep extends MultiStep<TParts>
+  TStep extends MultiStep<TParts>,
 > = z.infer<Extract<TParts[number], { id: TStep }>["output"]>;
 
 /** Data representation of a single **part** in a multi-stepper. */
 export type MultiStepPart<
   TOutput extends z.ZodType = z.ZodType,
   TId extends string = string,
-  TRenderArgs = MultiStepPartDefaultRenderProps<TOutput>
+  TRenderArgs = MultiStepPartDefaultRenderProps<TOutput>,
 > = {
   id: TId;
   title: React.ReactNode;
   indicator?: React.ReactNode;
   defaultValues?: (
-    data: Partial<z.infer<TOutput>>
+    data: Partial<z.infer<TOutput>>,
   ) => Partial<z.infer<TOutput>>;
   render: React.FC<TRenderArgs>;
 } & (
@@ -87,21 +87,33 @@ export type MultiStepCheckedResult<TParts extends MultiStepPartArray> = {
   parts: MultiStepPartsResult<TParts>;
 };
 
-export type MultiStepUncheckedResult<TParts extends MultiStepPartArray> = {
-  merged: Partial<MultiStepMergedResult<TParts>>;
-  parts: Partial<MultiStepCheckedResult<TParts>["parts"]>;
+/**
+ * @param TParts The array of multi-step parts.
+ * @param TRequired The steps that are required to be completed.
+ */
+export type MultiStepUncheckedResult<
+  TParts extends MultiStepPartArray,
+  TRequired extends MultiStep<TParts> = never,
+> = {
+  merged: Omit<
+    Partial<MultiStepMergedResult<TParts>>,
+    keyof InferMultiStepOutput<TParts, TRequired>
+  > &
+    InferMultiStepOutput<TParts, TRequired>;
+  parts: Omit<Partial<MultiStepCheckedResult<TParts>["parts"]>, TRequired> &
+    MultiStepCheckedResult<TParts>["parts"];
 };
 
 export const defineMultiStepParts = <TParts extends MultiStepPartArray>(
-  parts: TParts
+  parts: TParts,
 ) => parts;
 
 /** Type helper to define a multi step part with proper generics. */
 export const defineMultiStepPart = <
   TOutput extends z.ZodType,
-  TId extends string
+  TId extends string,
 >(
-  part: MultiStepPart<TOutput, TId>
+  part: MultiStepPart<TOutput, TId>,
 ): MultiStepPart<TOutput, TId> => part;
 
 /** [Framer Motion] used to animate the multi-step form */
@@ -123,28 +135,46 @@ const slideVariants = {
   }),
 };
 
+export type CompleteStepResult<
+  TParts extends MultiStepPartArray,
+  TStep extends MultiStep<TParts>,
+> = Extract<TParts[number], { id: TStep }> extends { hasOutput: true }
+  ? { step: TStep; outputs: InferMultiStepOutput<TParts, TStep> }
+  : { step: TStep; outputs?: InferMultiStepOutput<TParts, TStep> };
+
+export type CompleteStepMap<TParts extends MultiStepPartArray> = {
+  [K in MultiStep<TParts>]?: (
+    result: CompleteStepResult<TParts, K>,
+  ) => unknown | Promise<unknown>;
+};
+
 export function MultiStep<TParts extends MultiStepPartArray>({
   parts,
   step,
   defaultStep = parts[0]?.id,
   onStepChange,
+  completionHandlers,
   onFinish,
   className,
+  disabled,
   ...restProps
 }: React.ComponentProps<"section"> & {
   parts: TParts;
   defaultStep?: MultiStep<TParts>;
   step?: MultiStep<TParts>;
   onStepChange?: (step: MultiStep<TParts>) => void;
+  completionHandlers?: CompleteStepMap<TParts>;
   onFinish?: (result: {
     /** Returns the stepper's partial result with everything gathered. */
     partial(): MultiStepUncheckedResult<TParts>;
     /** Returns the stepper's complete result and throws an error if it's not complete. */
     complete(): MultiStepCheckedResult<TParts>;
   }) => void;
+  disabled?: boolean;
 }) {
   const directionRef = React.useRef(0);
   const [_step, _setStep] = React.useState(defaultStep);
+  const [_state, _setState] = React.useState<MultiStepContext["state"]>("idle");
   const resultRef = React.useRef<Partial<MultiStepUncheckedResult<TParts>>>({});
 
   if (_step == null) throw new Error("MultiStep requires at least one step");
@@ -154,6 +184,9 @@ export function MultiStep<TParts extends MultiStepPartArray>({
 
   const onStepChangeRef = React.useRef(onStepChange);
   onStepChangeRef.current = onStepChange;
+
+  const completionHandlersRef = React.useRef(completionHandlers);
+  completionHandlersRef.current = completionHandlers;
 
   React.useEffect(() => {
     if (step === undefined) return;
@@ -180,7 +213,7 @@ export function MultiStep<TParts extends MultiStepPartArray>({
             const resultParts = res.parts;
             if (!resultParts) throw new Error("No parts data available.");
             const notCompletePart = parts.find(
-              (p) => p.hasOutput && !(p.id in resultParts)
+              (p) => p.hasOutput && !(p.id in resultParts),
             );
             if (notCompletePart)
               throw new Error(`Part "${notCompletePart.id}" is not complete.`);
@@ -206,8 +239,11 @@ export function MultiStep<TParts extends MultiStepPartArray>({
         step: _step,
         direction: directionRef.current,
         controls,
+        disabled: _state === "submitting" || disabled,
+        state: _state,
+        setState: _setState,
         result: () => resultRef.current,
-        onComplete: (data) => {
+        onComplete: async (data) => {
           const part = controls.part();
           if (part.hasOutput) {
             const p = (resultRef.current.parts ??
@@ -220,15 +256,23 @@ export function MultiStep<TParts extends MultiStepPartArray>({
               ...data,
             };
           }
-          //* Remove this if you don't want to auto-complete on last step submission
-          controls.next();
+          try {
+            _setState("submitting");
+            const completionHandlers = completionHandlersRef.current;
+            if (completionHandlers?.[_step]) {
+              await completionHandlers[_step]({ step: _step, outputs: data });
+            }
+            controls.next(); // Auto-complete on last step submission
+          } finally {
+            _setState("idle");
+          }
         },
       }}
     >
       <section
         className={cn(
           "flex flex-col gap-6 overflow-hidden relative",
-          className
+          className,
         )}
         {...restProps}
       />
@@ -237,13 +281,13 @@ export function MultiStep<TParts extends MultiStepPartArray>({
 }
 
 export function MultiStepCurrentPart(
-  props: Omit<React.ComponentProps<typeof motion.div>, "children">
+  props: Omit<React.ComponentProps<typeof motion.div>, "children">,
 ) {
   const multiStep = useMultiStep();
 
   return (
     <div className="relative">
-      <AnimatePresence custom={multiStep.direction}>
+      <AnimatePresence custom={multiStep.direction} initial={false}>
         {multiStep.parts.map((part) =>
           part.id === multiStep.controls.step ? (
             <MultiStepPart
@@ -252,7 +296,7 @@ export function MultiStepCurrentPart(
               key={part.id}
               {...props}
             />
-          ) : null
+          ) : null,
         )}
       </AnimatePresence>
     </div>
@@ -261,7 +305,7 @@ export function MultiStepCurrentPart(
 
 function MultiStepPart<
   TParts extends MultiStepPartArray,
-  TStep extends MultiStep<TParts>
+  TStep extends MultiStep<TParts>,
 >({
   parts,
   step,
@@ -283,7 +327,7 @@ function MultiStepPart<
     ? part.defaultValues(
         part.id in resultParts
           ? resultParts[part.id as keyof typeof resultParts]
-          : {}
+          : {},
       )
     : {};
 
@@ -347,7 +391,7 @@ export function MultiStepFooter({
     <div
       className={cn(
         "flex items-center gap-2 justify-end *:not-disabled:cursor-pointer",
-        className
+        className,
       )}
       {...restProps}
     >
@@ -356,18 +400,27 @@ export function MultiStepFooter({
           type="button"
           variant="secondary"
           onClick={() => multiStep.controls.back()}
+          disabled={multiStep.disabled}
         >
           <ArrowLeftIcon />
           Back
         </Button>
       )}
       {multiStep.controls.hasNext() ? (
-        <Button type="submit" form={multiStep.controls.part().id}>
+        <Button
+          type="submit"
+          form={multiStep.controls.part().id}
+          disabled={multiStep.disabled}
+        >
           Next
           <ArrowRightIcon />
         </Button>
       ) : (
-        <Button type="submit" form={multiStep.controls.part().id}>
+        <Button
+          type="submit"
+          form={multiStep.controls.part().id}
+          disabled={multiStep.disabled}
+        >
           Complete
           <ArrowRightIcon />
         </Button>

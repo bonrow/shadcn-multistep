@@ -21,7 +21,7 @@ export type MultiStepPartFormRenderProps<TOutput extends FormOutputSchema> =
 /** Type helper to define a multi step part with proper generics. */
 export function defineMultiStepFormPart<
   const TId extends string,
-  const TOutput extends FormOutputSchema
+  const TOutput extends FormOutputSchema,
 >({
   render: RenderComposed,
   ...restPart
@@ -39,10 +39,13 @@ export function defineMultiStepFormPart<
       if (!rest.part.hasOutput)
         throw new Error("MultiStepFormPart requires an output schema");
 
+      const multiStep = useMultiStep();
+
       // biome-ignore lint/suspicious/noExplicitAny: too complex
       const form = useForm<any>({
         resolver: zodResolver(rest.part.output),
         defaultValues: defaultValues as DefaultValues<typeof defaultValues>,
+        disabled: multiStep.disabled,
       });
       return (
         <MultiStepPartForm form={form}>
