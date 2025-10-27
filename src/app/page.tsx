@@ -1,13 +1,7 @@
 "use client";
 
 import { SiGithub } from "@icons-pack/react-simple-icons";
-import {
-  CheckIcon,
-  ExternalLinkIcon,
-  HomeIcon,
-  SendIcon,
-  User2Icon,
-} from "lucide-react";
+import { CheckIcon, ExternalLinkIcon } from "lucide-react";
 import { useFormContext } from "react-hook-form";
 import z from "zod";
 import { Button } from "@/components/ui/button";
@@ -19,6 +13,13 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   defineMultiStepPart,
   type InferMultiStepOutput,
@@ -36,18 +37,26 @@ const GITHUB_REPO_URL = "https://github.com/bonrow/shadcn-multistep";
 
 type Parts = typeof parts;
 
+const ORG_ROLES = Object.freeze([
+  "CEO",
+  "CTO",
+  "Lead",
+  "Staff",
+  "Developer",
+  "Intern",
+]);
+
 const parts = Object.freeze([
   defineMultiStepPart({
     id: "name-step",
-    indicator: <User2Icon />,
     title: "What is your name?",
     output: z.object({
       lastName: z.string().min(1),
       firstName: z.string().min(1),
     }),
     defaults: (data) => ({
-      lastName: data.lastName || "John",
-      firstName: data.firstName || "Doe",
+      firstName: data.firstName || "John",
+      lastName: data.lastName || "Doe",
     }),
     render: (props) => (
       <MultiStepFormPart {...props}>
@@ -61,20 +70,19 @@ const parts = Object.freeze([
   }),
 
   defineMultiStepPart({
-    id: "address-step",
-    indicator: <HomeIcon />,
-    title: "Where should we deliver to?",
+    id: "org-step",
+    title: "What about your organization?",
     output: z.object({
-      address: z.string().min(3),
-      city: z.string().min(3),
+      name: z.string().min(1, "Organization name is required"),
+      role: z.enum(ORG_ROLES),
     }),
     defaults: (data) => ({
-      address: data.address || String(),
-      city: data.city || String(),
+      name: data.name || String(),
+      role: data.role || "Developer",
     }),
     render: (props) => (
       <MultiStepFormPart {...props}>
-        <AddressFormContent />
+        <OrgFormContent />
         <MultiStepFooter>
           <MultiStepBackButton />
           <MultiStepNextButton />
@@ -85,14 +93,13 @@ const parts = Object.freeze([
 
   defineMultiStepPart({
     id: "success-panel",
-    indicator: <SendIcon />,
-    title: "Success!",
+    indicator: <CheckIcon />,
+    title: "Welcome aboard!",
     defaults: () => undefined as never,
     render: ({ next }) => (
       <div>
         <span className="flex items-center gap-2">
-          <CheckIcon />
-          Success!
+          Please make sure all your information is correct before submitting.
         </span>
         <MultiStepFooter>
           <MultiStepBackButton />
@@ -102,6 +109,28 @@ const parts = Object.freeze([
     ),
   }),
 ]);
+
+function DeliverWizard() {
+  return (
+    <div className="before:absolute before:-inset-px before:bg-linear-to-br before:from-primary/60 before:to-accent before:to-40% before:-z-5 before:rounded-lg relative max-w-sm w-full">
+      <MultiStep
+        parts={parts}
+        className="max-w-sm w-full bg-linear-to-br from-card to-background p-6 rounded-lg relative"
+        onFinish={({ partial, complete }) => {
+          // Prints the stepper's partial result with everything gathered.
+          console.log("Partial result:", partial());
+
+          // Prints the stepper's complete result and throws an error if it's not complete.
+          console.log("Full result:", complete());
+        }}
+      >
+        <MultiStepIndicator />
+        <MultiStepTitle />
+        <MultiStepCurrentPart className="[&_form]:space-y-5" />
+      </MultiStep>
+    </div>
+  );
+}
 
 export default function Home() {
   return (
@@ -115,7 +144,7 @@ export default function Home() {
       </h1>
       <Button
         variant="secondary"
-        className="flex items-center gap-3 tracking-tight font-medium text-base cursor-pointer active:scale-98"
+        className="flex items-center gap-3 font-medium cursor-pointer active:scale-98"
         asChild
       >
         <a href={GITHUB_REPO_URL}>
@@ -124,22 +153,7 @@ export default function Home() {
           <ExternalLinkIcon />
         </a>
       </Button>
-      <div className="max-w-sm w-full bg-linear-to-br from-card to-background p-6 rounded-lg relative before:absolute before:-inset-px before:bg-linear-to-br before:from-primary/60 before:to-accent before:to-40% before:-z-5 before:rounded-lg">
-        <MultiStep
-          parts={parts}
-          onFinish={({ partial, complete }) => {
-            // Prints the stepper's partial result with everything gathered.
-            console.log("Partial result:", partial());
-
-            // Prints the stepper's complete result and throws an error if it's not complete.
-            console.log("Full result:", complete());
-          }}
-        >
-          <MultiStepIndicator />
-          <MultiStepTitle />
-          <MultiStepCurrentPart className="[&_form]:space-y-5" />
-        </MultiStep>
-      </div>
+      <DeliverWizard />
     </div>
   );
 }
@@ -179,19 +193,19 @@ function NameFormContent() {
   );
 }
 
-function AddressFormContent() {
-  const form = useFormContext<InferMultiStepOutput<Parts, "address-step">>();
+function OrgFormContent() {
+  const form = useFormContext<InferMultiStepOutput<Parts, "org-step">>();
 
   return (
     <>
       <FormField
         control={form.control}
-        name="address"
+        name="name"
         render={({ field }) => (
           <FormItem>
-            <FormLabel>Address</FormLabel>
+            <FormLabel>Name</FormLabel>
             <FormControl>
-              <Input placeholder="Address" {...field} />
+              <Input placeholder="Organization Name" {...field} />
             </FormControl>
             <FormMessage />
           </FormItem>
@@ -199,13 +213,28 @@ function AddressFormContent() {
       />
       <FormField
         control={form.control}
-        name="city"
+        name="role"
         render={({ field }) => (
           <FormItem>
-            <FormLabel>City</FormLabel>
-            <FormControl>
-              <Input placeholder="City" {...field} />
-            </FormControl>
+            <FormLabel>What is your role?</FormLabel>
+            <Select value={field.value} onValueChange={field.onChange}>
+              <FormControl>
+                <SelectTrigger className="w-full cursor-pointer">
+                  <SelectValue placeholder="Select a role" />
+                </SelectTrigger>
+              </FormControl>
+              <SelectContent>
+                {ORG_ROLES.map((role) => (
+                  <SelectItem
+                    key={role}
+                    value={role}
+                    className="cursor-pointer"
+                  >
+                    {role}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
             <FormMessage />
           </FormItem>
         )}
