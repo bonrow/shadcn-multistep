@@ -12,6 +12,7 @@ import { resolve } from "path";
 import { type DefaultValues, useForm, useFormContext } from "react-hook-form";
 import z from "zod";
 import { partial } from "zod/mini";
+import { Button } from "@/components/ui/button";
 import {
   Form,
   FormControl,
@@ -23,12 +24,19 @@ import {
 import { Input } from "@/components/ui/input";
 import {
   defineMultiStepPart,
+  type InferMultiStepNextFn,
+  type InferMultiStepOutput,
   MultiStep,
+  MultiStepBackButton,
   MultiStepCurrentPart,
   MultiStepFooter,
+  MultiStepNextButton,
   MultiStepTitle,
 } from "@/registry/new-york/multi-step/multi-step";
+import { MultiStepFormPart } from "@/registry/new-york/multi-step/multi-step.form";
 import { MultiStepIndicator } from "@/registry/new-york/multi-step/multi-step.indicator";
+
+type Parts = typeof parts;
 
 const parts = Object.freeze([
   defineMultiStepPart({
@@ -36,26 +44,45 @@ const parts = Object.freeze([
     indicator: <User2Icon />,
     title: "What is your name?",
     output: z.object({
-      lastName: z.string(),
-      firstName: z.string(),
+      lastName: z.string().min(1),
+      firstName: z.string().min(1),
     }),
     defaults: (data) => ({
       lastName: data.lastName || String(),
       firstName: data.firstName || String(),
     }),
-    render: ({ defaults, next, part }) => {
-      if (!part.output) throw new Error("Part must have output");
-      const form = useForm({
-        resolver: zodResolver(part.output),
-        defaultValues: defaults,
-      });
-      return (
-        <Form {...form}>
-          <NameForm next={next} />
-          <MultiStepFooter />
-        </Form>
-      );
-    },
+    render: (props) => (
+      <MultiStepFormPart {...props}>
+        <NameFormContent />
+        <MultiStepFooter>
+          <MultiStepBackButton />
+          <MultiStepNextButton />
+        </MultiStepFooter>
+      </MultiStepFormPart>
+    ),
+  }),
+
+  defineMultiStepPart({
+    id: "address-step",
+    indicator: <HomeIcon />,
+    title: "Where should we deliver to?",
+    output: z.object({
+      address: z.string().min(3),
+      city: z.string().min(3),
+    }),
+    defaults: (data) => ({
+      address: data.address || String(),
+      city: data.city || String(),
+    }),
+    render: (props) => (
+      <MultiStepFormPart {...props}>
+        <AddressFormContent />
+        <MultiStepFooter>
+          <MultiStepBackButton />
+          <MultiStepNextButton />
+        </MultiStepFooter>
+      </MultiStepFormPart>
+    ),
   }),
 
   defineMultiStepPart({
@@ -69,7 +96,9 @@ const parts = Object.freeze([
           <CheckIcon />
           Success!
         </span>
-        <MultiStepFooter onNext={() => next()} />
+        <MultiStepFooter>
+          <MultiStepNextButton onClick={() => next()} />
+        </MultiStepFooter>
       </div>
     ),
   }),
@@ -94,25 +123,18 @@ export default function Home() {
         >
           <MultiStepIndicator />
           <MultiStepTitle />
-          <MultiStepCurrentPart />
+          <MultiStepCurrentPart className="[&_form]:space-y-5" />
         </MultiStep>
       </div>
     </div>
   );
 }
 
-function NameForm({
-  next,
-}: {
-  next: (data: { firstName: string; lastName: string }) => void;
-}) {
-  const form = useFormContext<{
-    firstName: string;
-    lastName: string;
-  }>();
+function NameFormContent() {
+  const form = useFormContext<InferMultiStepOutput<Parts, "name-step">>();
 
   return (
-    <form onSubmit={form.handleSubmit(next)}>
+    <>
       <FormField
         control={form.control}
         name="firstName"
@@ -139,6 +161,41 @@ function NameForm({
           </FormItem>
         )}
       />
-    </form>
+    </>
+  );
+}
+
+function AddressFormContent() {
+  const form = useFormContext<InferMultiStepOutput<Parts, "address-step">>();
+
+  return (
+    <>
+      <FormField
+        control={form.control}
+        name="address"
+        render={({ field }) => (
+          <FormItem>
+            <FormLabel>Address</FormLabel>
+            <FormControl>
+              <Input {...field} />
+            </FormControl>
+            <FormMessage />
+          </FormItem>
+        )}
+      />
+      <FormField
+        control={form.control}
+        name="city"
+        render={({ field }) => (
+          <FormItem>
+            <FormLabel>City</FormLabel>
+            <FormControl>
+              <Input {...field} />
+            </FormControl>
+            <FormMessage />
+          </FormItem>
+        )}
+      />
+    </>
   );
 }

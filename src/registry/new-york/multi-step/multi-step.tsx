@@ -1,7 +1,7 @@
 "use client";
 import { ArrowLeftIcon, ArrowRightIcon } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
-import React from "react";
+import React, { type ComponentProps } from "react";
 import type { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -57,11 +57,31 @@ export type MultiStepPartArray = ReadonlyArray<
 /** Extracts a union of all the IDs in `TPart`. */
 export type MultiStep<TParts extends MultiStepPartArray> = TParts[number]["id"];
 
+export type InferMultiStepPartByStep<
+  TParts extends MultiStepPartArray,
+  TStep extends MultiStep<TParts>,
+> = Extract<TParts[number], { id: TStep }>;
+
 /** Infers the `output` of `TStep` in `TParts`, or returns `never`. */
 export type InferMultiStepOutput<
   TParts extends MultiStepPartArray,
   TStep extends MultiStep<TParts>,
-> = z.infer<Extract<TParts[number], { id: TStep }>["output"]>;
+> = z.infer<NonNullable<InferMultiStepPartByStep<TParts, TStep>["output"]>>;
+
+export type InferMultiStepNextFn<
+  TParts extends MultiStepPartArray,
+  TStep extends MultiStep<TParts>,
+> = InferMultiStepRenderProps<TParts, TStep>["next"];
+
+export type InferMultiStepDefaults<
+  TParts extends MultiStepPartArray,
+  TStep extends MultiStep<TParts>,
+> = InferMultiStepRenderProps<TParts, TStep>["defaults"];
+
+export type InferMultiStepRenderProps<
+  TParts extends MultiStepPartArray,
+  TStep extends MultiStep<TParts>,
+> = ComponentProps<InferMultiStepPartByStep<TParts, TStep>["render"]>;
 
 export type MultiStepPartDefaultRenderProps<TOutput extends MultiStepOutput> = {
   stepper: MultiStepContext;
@@ -249,14 +269,15 @@ export function MultiStep<TParts extends MultiStepPartArray>({
     (res: () => (typeof resultRef)["current"]) => ({
       partial: () => res() as MultiStepUncheckedResult<TParts>,
       complete: () => {
-        const resultParts = res().parts;
+        const result = res();
+        const resultParts = result.parts;
         if (!resultParts) throw new Error("No parts data available.");
         const notCompletePart = parts.find(
           (p) => p.output && !(p.id in resultParts),
         );
         if (notCompletePart)
           throw new Error(`Part "${notCompletePart.id}" is not complete.`);
-        return res as unknown as MultiStepCheckedResult<TParts>;
+        return result as unknown as MultiStepCheckedResult<TParts>;
       },
     }),
     [parts],
@@ -374,9 +395,10 @@ function MultiStepPart<
   const resultParts = multiStep.result().parts;
 
   const defaults = React.useMemo(() => {
-    if (!resultParts || !part.defaults) return {};
-    if (!(part.id in resultParts)) return part.defaults({});
-    return part.defaults(resultParts[part.id as keyof typeof resultParts]);
+    if (!part.defaults) return {};
+    if (resultParts && part.id in resultParts)
+      return part.defaults(resultParts[part.id as keyof typeof resultParts]);
+    return part.defaults({});
   }, [part, resultParts]);
 
   const next = React.useCallback(
@@ -449,43 +471,45 @@ export function MultiStepTitle({
 
 export function MultiStepFooter({
   className,
-  onNext,
   ...restProps
-}: Omit<React.ComponentProps<"div">, "children"> & {
-  onNext?: () => void;
-}) {
-  const multiStep = useMultiStep();
-
+}: React.ComponentProps<"div">) {
   return (
     <div
       className={cn(
-        "flex items-center gap-2 justify-end *:not-disabled:cursor-pointer",
+        "flex items-center gap-3 justify-end *:not-disabled:cursor-pointer mt-6",
         className,
       )}
       {...restProps}
+    />
+  );
+}
+
+export function MultiStepBackButton(
+  props: Omit<React.ComponentProps<typeof Button>, "children">,
+) {
+  const multiStep = useMultiStep();
+
+  return (
+    <Button
+      type="button"
+      variant="secondary"
+      onClick={() => multiStep.controls.back()}
+      disabled={multiStep.disabled || !multiStep.controls.hasPrevious()}
+      {...props}
     >
-      {multiStep.controls.hasPrevious() && (
-        <Button
-          type="button"
-          variant="secondary"
-          onClick={() => multiStep.controls.back()}
-          disabled={multiStep.disabled}
-        >
-          <ArrowLeftIcon />
-          Back
-        </Button>
-      )}
-      {multiStep.controls.hasNext() ? (
-        <Button type="submit" disabled={multiStep.disabled} onSubmit={onNext}>
-          Next
-          <ArrowRightIcon />
-        </Button>
-      ) : (
-        <Button type="submit" disabled={multiStep.disabled} onSubmit={onNext}>
-          Complete
-          <ArrowRightIcon />
-        </Button>
-      )}
-    </div>
+      Back
+    </Button>
+  );
+}
+
+export function MultiStepNextButton(
+  props: Omit<React.ComponentProps<typeof Button>, "children">,
+) {
+  const multiStep = useMultiStep();
+
+  return (
+    <Button type="submit" disabled={multiStep.disabled} {...props}>
+      {multiStep.controls.hasNext() ? "Next" : "Complete"}
+    </Button>
   );
 }
