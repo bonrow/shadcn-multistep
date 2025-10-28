@@ -20,6 +20,10 @@ import { ObservableMultiStepControls } from "./multi-step.controls";
 // biome-ignore lint/suspicious/noExplicitAny: needed for type helper
 type UnionKeys<U> = U extends any ? keyof U : never;
 
+type Flatten<T> = {
+  [K in keyof T]: T[K];
+} & {};
+
 type MergeUnionToObject<U> = {
   // biome-ignore lint/suspicious/noExplicitAny: needed for type helper
   [K in UnionKeys<U>]: U extends any
@@ -39,7 +43,7 @@ type WithRequired<T, K extends keyof T> = T & {
 
 type DefaultValues<
   TObject,
-  _TPartKeys extends keyof TObject = GetPartiableKeys<TObject>,
+  _TPartKeys extends keyof TObject = GetPartiableKeys<TObject>
 > = TObject & Partial<Pick<TObject, _TPartKeys>>;
 // ########################### </ TYPE HELPERS>  ###########################
 
@@ -47,7 +51,7 @@ export type MultiStepOutput = z.ZodType | undefined;
 
 export type MultiStepPartFromStep<
   TParts extends MultiStepPartArray,
-  TStep extends MultiStep<TParts>,
+  TStep extends MultiStep<TParts>
 > = Extract<TParts[number], { id: TStep }>;
 
 export type MultiStepPartArray = ReadonlyArray<
@@ -60,28 +64,28 @@ export type MultiStep<TParts extends MultiStepPartArray> = TParts[number]["id"];
 
 export type InferMultiStepPartByStep<
   TParts extends MultiStepPartArray,
-  TStep extends MultiStep<TParts>,
+  TStep extends MultiStep<TParts>
 > = Extract<TParts[number], { id: TStep }>;
 
 /** Infers the `output` of `TStep` in `TParts`, or returns `never`. */
 export type InferMultiStepOutput<
   TParts extends MultiStepPartArray,
-  TStep extends MultiStep<TParts>,
+  TStep extends MultiStep<TParts>
 > = z.infer<NonNullable<InferMultiStepPartByStep<TParts, TStep>["output"]>>;
 
 export type InferMultiStepNextFn<
   TParts extends MultiStepPartArray,
-  TStep extends MultiStep<TParts>,
+  TStep extends MultiStep<TParts>
 > = InferMultiStepRenderProps<TParts, TStep>["next"];
 
 export type InferMultiStepDefaults<
   TParts extends MultiStepPartArray,
-  TStep extends MultiStep<TParts>,
+  TStep extends MultiStep<TParts>
 > = InferMultiStepRenderProps<TParts, TStep>["defaults"];
 
 export type InferMultiStepRenderProps<
   TParts extends MultiStepPartArray,
-  TStep extends MultiStep<TParts>,
+  TStep extends MultiStep<TParts>
 > = ComponentProps<InferMultiStepPartByStep<TParts, TStep>["render"]>;
 
 export type MultiStepPartDefaultRenderProps<TOutput extends MultiStepOutput> = {
@@ -93,9 +97,7 @@ export type MultiStepPartDefaultRenderProps<TOutput extends MultiStepOutput> = {
 type PartWithGuaranteedOutput<
   TOutput extends MultiStepOutput = MultiStepOutput,
   TId extends string = string,
-  TComputeResult extends unknown | Promise<unknown> =
-    | unknown
-    | Promise<unknown>,
+  TComputeResult extends unknown | Promise<unknown> = unknown | Promise<unknown>
 > = WithRequired<
   MultiStepPart<TOutput, TId, TComputeResult>,
   "output" | "defaults"
@@ -118,7 +120,7 @@ export type MultiStepPart<
   TId extends string = string,
   TComputeResult = unknown,
   _TOut = TOutput extends undefined ? undefined : z.infer<TOutput>,
-  _TDefaults = DefaultValues<_TOut>,
+  _TDefaults = DefaultValues<_TOut>
 > = {
   id: TId;
   title: React.ReactNode;
@@ -153,23 +155,20 @@ export type MultiStepPart<
 );
 
 /** Extracts the merged result of all steps through forming an intersection. */
-export type MultiStepMergedResult<TParts extends MultiStepPartArray> =
-  MergeUnionToObject<FilterOutput<TParts[number]>>;
+export type MultiStepMergedResult<TParts extends MultiStepPartArray> = Flatten<
+  MergeUnionToObject<ParseOutput<TParts[number]["output"]>>
+>;
 
-type FilterOutput<T> = T extends { output: infer TOutput }
-  ? unknown extends z.infer<TOutput>
-    ? never
-    : z.infer<TOutput>
-  : never;
+type ParseOutput<T> = T extends z.ZodType ? z.infer<T> : never;
 
-export type MultiStepPartsResult<TParts extends MultiStepPartArray> = {
-  [K in MultiStep<TParts> as undefined extends Extract<
-    TParts[number],
-    { id: K }
-  >["output"]
+export type MultiStepPartsResult<TParts extends MultiStepPartArray> = Flatten<{
+  [K in MultiStep<TParts> as MultiStepPartFromStep<
+    TParts,
+    K
+  >["output"] extends undefined
     ? never
     : K]: InferMultiStepOutput<TParts, K>;
-};
+}>;
 
 export type MultiStepCheckedResult<TParts extends MultiStepPartArray> = {
   merged: MultiStepMergedResult<TParts>;
@@ -193,22 +192,22 @@ export type MultiStepStateProbeContext<TParts extends MultiStepPartArray> = {
 };
 
 export const defineMultiStepParts = <TParts extends MultiStepPartArray>(
-  parts: TParts,
+  parts: TParts
 ) => parts;
 
 /** Type helper to define a multi step part with proper generics. */
 export const defineMultiStepPart = <
   TOutput extends MultiStepOutput,
   TId extends string,
-  TComputeResult = unknown,
+  TComputeResult = unknown
 >(
-  part: MultiStepPart<TOutput, TId, TComputeResult>,
+  part: MultiStepPart<TOutput, TId, TComputeResult>
 ): Readonly<MultiStepPart<TOutput, TId, TComputeResult>> => part;
 
 const transition = Object.freeze({
   type: "spring",
   stiffness: 300,
-  damping: 26,
+  damping: 27,
 } as const);
 
 /** [Framer Motion] used to animate the multi-step form */
@@ -283,14 +282,14 @@ export function MultiStep<TParts extends MultiStepPartArray>({
         const resultParts = result.parts;
         if (!resultParts) throw new Error("No parts data available.");
         const notCompletePart = parts.find(
-          (p) => p.output && !(p.id in resultParts),
+          (p) => p.output && !(p.id in resultParts)
         );
         if (notCompletePart)
           throw new Error(`Part "${notCompletePart.id}" is not complete.`);
         return result as unknown as MultiStepCheckedResult<TParts>;
       },
     }),
-    [parts],
+    [parts]
   );
 
   const controls = React.useMemo(() => {
@@ -353,7 +352,7 @@ export function MultiStep<TParts extends MultiStepPartArray>({
       <section
         className={cn(
           "flex flex-col gap-6 overflow-hidden relative",
-          className,
+          className
         )}
         {...restProps}
       />
@@ -362,7 +361,7 @@ export function MultiStep<TParts extends MultiStepPartArray>({
 }
 
 export function MultiStepCurrentPart(
-  props: Omit<React.ComponentProps<typeof motion.div>, "children">,
+  props: Omit<React.ComponentProps<typeof motion.div>, "children">
 ) {
   const multiStep = useMultiStep();
 
@@ -377,7 +376,7 @@ export function MultiStepCurrentPart(
               key={part.id}
               {...props}
             />
-          ) : null,
+          ) : null
         )}
       </AnimatePresence>
     </div>
@@ -386,7 +385,7 @@ export function MultiStepCurrentPart(
 
 function MultiStepPart<
   TParts extends MultiStepPartArray,
-  TStep extends MultiStep<TParts>,
+  TStep extends MultiStep<TParts>
 >({
   parts,
   step,
@@ -424,7 +423,7 @@ function MultiStepPart<
       }
       multiStep.controls.next();
     },
-    [multiStep, part],
+    [multiStep, part]
   );
 
   return (
@@ -486,7 +485,7 @@ export function MultiStepFooter({
     <div
       className={cn(
         "flex items-center gap-3 justify-end *:not-disabled:cursor-pointer mt-6",
-        className,
+        className
       )}
       {...restProps}
     />
@@ -494,7 +493,7 @@ export function MultiStepFooter({
 }
 
 export function MultiStepBackButton(
-  props: Omit<React.ComponentProps<typeof Button>, "children">,
+  props: Omit<React.ComponentProps<typeof Button>, "children">
 ) {
   const multiStep = useMultiStep();
 
@@ -512,7 +511,7 @@ export function MultiStepBackButton(
 }
 
 export function MultiStepNextButton(
-  props: Omit<React.ComponentProps<typeof Button>, "children">,
+  props: Omit<React.ComponentProps<typeof Button>, "children">
 ) {
   const multiStep = useMultiStep();
 
